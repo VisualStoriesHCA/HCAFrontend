@@ -1,0 +1,863 @@
+openapi: 3.0.0
+info:
+  title: Preview Stories API
+  description: API for managing preview stories
+  version: 1.0.0
+  
+servers:
+  - url: http://localhost:8080/
+    description: Production server
+    
+paths:
+  /createNewUser:
+    post:
+      summary: Create a new user
+      description: Create a new user with a name, return the users details
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userName
+                - name
+                - userId
+              properties:
+                userId:
+                  type: string
+                  nullable: false
+                  description: Unique identifier for the user
+                  example: "user123"
+                userName:
+                  type: string
+                  nullable: false
+                  description: Name of the user
+                  example: "Steve123"
+                name:
+                  type: string
+                  nullable: true
+                  description: Full name of the user
+                  example: "Steve Jobs"
+      responses:
+        '201':
+          description: Successfully created new user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetailsResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /deleteUser:
+    delete:
+      summary: Delete a user
+      description: Delete a user by Id
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          description: The Id of the user to delete
+          schema:
+            type: string
+          example: "user123"
+      responses:
+        '204':
+          description: Successfully deleted user
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /getUserInformationByUserName:
+    get:
+      summary: Get user information by username
+      description: Retrieve detailed information about a user by their username
+      parameters:
+        - name: userName
+          in: query
+          required: true
+          description: The username of the user whose information to retrieve
+          schema:
+            type: string
+          example: "Steve123"
+      responses:
+        '200':
+          description: Successfully retrieved user details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetailsResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error' 
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /getUserStories:
+    get:
+      summary: List preview stories
+      description: Retrieve a list of preview stories for a specific user
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          description: The Id of the user whose stories to retrieve
+          schema:
+            type: string
+          example: "user123"
+        - name: maxEntries
+          in: query
+          required: false
+          description: Maximum number of stories to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          example: 25
+      responses:
+        '200':
+          description: Successfully retrieved preview stories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StoryHead'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /getStoryById:
+    get:
+      summary: Get story details by Id
+      description: Retrieve detailed information for a specific story
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          description: The Id of the user who owns the story
+          schema:
+            type: string
+          example: "user123"
+        - name: storyId
+          in: query
+          required: true
+          description: The Id of the story to retrieve
+          schema:
+            type: string
+          example: "891415125124"
+      responses:
+        '200':
+          description: Successfully retrieved story details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoryBody'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Story not found or user does not have access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /getUserInformation:
+    get:
+      summary: Get user information by Id
+      description: Retrieve detailed information about the user
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          description: The Id of the user whose information to retrieve
+          schema:
+            type: string
+          example: "user123"
+      responses:
+        '200':
+          description: Successfully retrieved user details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetailsResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /updateImagesFromText:
+    post:
+      summary: Update images based on text content
+      description: Update or generate images for a story based on updated text content
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateImagesFromTextRequest'
+            example:
+              userId: "user123"
+              storyId: "891415125124"
+              updatedText: "The brave knight rode through the enchanted forest under the moonlight"
+      responses:
+        '200':
+          description: Successfully updated images
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoryBody'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Story not found or user does not have access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /updateTextFromImages:
+    post:
+      summary: Update text content based on altered images
+      description: Generate or update story text based on modified or new images
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTextFromImagesRequest'
+            example:
+              userId: "user123"
+              storyId: "891415125124"
+              imageOperations:
+                - type: "sketchFromScratch"
+                  canvasData: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+                  alt: "Hand-drawn sketch of a castle"
+      responses:
+        '200':
+          description: Successfully updated text content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoryBody'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Story not found or user does not have access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /createNewStory:
+    post: 
+      summary: Create a new, empty story
+      description: Create a new story with an empty body and no images
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+              properties:
+                userId:
+                  type: string
+                  nullable: false
+                  description: The Id of the user creating the story
+                  example: "user123"
+                storyName:
+                  type: string
+                  nullable: false
+                  description: The name of the new story
+                  example: "My New Adventure Story"
+      responses:
+        '201':
+          description: Successfully created new story
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoryHead'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /deleteStory:
+    delete:
+      summary: Delete a story
+      description: Delete a story by Id
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          description: The Id of the user who owns the story
+          schema:
+            type: string
+          example: "user123"
+        - name: storyId
+          in: query
+          required: true
+          description: The Id of the story to delete
+          schema:
+            type: string
+          example: "891415125124"
+      responses:
+        '204':
+          description: Successfully deleted story
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Story not found or user does not have access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /uploadImage:
+    post:
+      summary: Upload an image for a story
+      description: Upload an image to be associated with a story. If the storyId is not provided, a new story will be created.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - userId
+                - storyId
+                - imageFile
+              properties:
+                userId:
+                  type: string
+                  nullable: false
+                  description: The Id of the user uploading the image
+                  example: "user123"
+                storyId:
+                  type: string
+                  nullable: true
+                  description: The Id of the story to associate the image with
+                  example: "891415125124"
+                imageFile:
+                  type: string
+                  format: binary
+                  nullable: false
+                  description: The image file to upload
+      responses:
+        '201':
+          description: Successfully uploaded image
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  storyId:
+                    type: string
+                    description: The Id of the story associated with the uploaded image
+                    example: "891415125124"
+                  image:
+                    $ref: '#/components/schemas/Image'
+        '400':
+          description: Invalid request parameters or file type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Story not found or user does not have access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /setStoryName:
+    post:
+      summary: Set or update the name of a story
+      description: Update the name of an existing story
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+                - storyId
+                - storyName
+              properties:
+                userId:
+                  type: string
+                  description: The Id of the user who owns the story
+                  example: "user123"
+                storyId:
+                  type: string
+                  description: The Id of the story to update
+                  example: "891415125124"
+                storyName:
+                  type: string
+                  description: The new name for the story
+                  example: "My Updated Adventure Story"
+            example:
+              userId: "user123"
+              storyId: "891415125124"
+              storyName: "My Updated Adventure Story"
+      responses:
+        '200':
+          description: Successfully updated story name
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoryHead'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Story not found or user does not have access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+  
+    StoryHead:
+      type: object
+      required:
+        - storyId
+        - storyName
+        - lastEdited
+      properties:
+        storyId:
+          type: string
+          nullable: false
+          description: Unique identifier for the story
+          example: "891415125124"
+        storyName:
+          type: string
+          nullable: false
+          description: Name of the story
+          example: "My Adventure Story"
+        lastEdited:
+          type: string
+          format: date-time
+          nullable: false
+          description: Timestamp when the story was last edited
+          example: "2025-05-26T14:30:00Z"
+        coverImage:
+          type: string
+          nullable: true
+          description: URL to the cover image for the story
+          example: "https://example.com/images/cover123.jpg"
+    
+    StoryBody:
+      type: object
+      required:
+        - storyId
+        - storyName
+        - storyText
+        - storyImages
+      properties:
+        storyId:
+          type: string
+          nullable: false
+          description: Unique identifier for the story
+          example: "891415125124"
+        storyName:
+          type: string
+          nullable: false
+          description: Name of the story
+          example: "My Adventure Story"
+        storyText:
+          type: string
+          nullable: true
+          description: The text content of the story
+          example: "Once upon a time, in a land far away..."
+        storyImages:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/Image'
+          description: Array of images associated with the story
+          
+    UserDetailsResponse:
+      type: object
+      required:
+        - userName
+        - user
+        - userId
+      properties:
+        userId:
+          type: string
+          nullable: false
+          description: Unique identifier for the user
+          example: "user123"
+        userName:
+          type: string
+          nullable: false
+          description: Name of the user
+          example: "Steve Jobs"
+        name:
+          type: string
+          nullable: true
+          description: Full name of the user
+          example: "Steve Jobs"
+        accountCreated:
+          type: string
+          nullable: true
+          description: Date when the user created the account
+          example: "24/02/1955"
+
+    UpdateImagesFromTextRequest:
+      type: object
+      required:
+        - userId
+        - storyId
+        - updatedText
+      properties:
+        userId:
+          type: string
+          nullable: false
+          description: The Id of the user who owns the story
+          example: "user123"
+        storyId:
+          type: string
+          nullable: false
+          description: The Id of the story to update
+          example: "891415125124"
+        updatedText:
+          type: string
+          nullable: false
+          description: The updated text content to generate images from
+          example: "The brave knight rode through the enchanted forest under the moonlight"
+
+
+    UpdateTextFromImagesRequest:
+      type: object
+      required:
+        - userId
+        - storyId
+        - imageOperations
+      properties:
+        userId:
+          type: string
+          nullable: false
+          description: The Id of the user who owns the story
+          example: "user123"
+        storyId:
+          type: string
+          nullable: false
+          description: The Id of the story to update
+          example: "891415125124"
+        imageOperations:
+          type: array
+          nullable: false
+          items:
+            $ref: '#/components/schemas/ImageOperation'
+          description: Array of operations performed on images
+
+    ImageOperation:
+      type: object
+      required:
+        - type
+      description: |
+        Expected behavior based on the type:
+        - nochange: No changes made to the image, only update the story text.
+        - sketchFromScratch: A new sketch has been drawn with no image background. Generate the story and a sketch.
+        - sketchOnImage: A sketch has been created on an existing image. Generate the story and a sketch.
+      properties:
+        type:
+          type: string
+          enum: [nochange, sketchFromScratch, sketchOnImage]
+          description: The type of operation performed on the image
+          example: "sketchFromScratch"
+        imageId:
+          type: string
+          nullable: true
+          description: Id of the existing image (required for nochange and sketchOnImage operations)
+          example: "img_891415125124_1"
+        canvasData:
+          type: string
+          nullable: true
+          description: Base64 encoded canvas data for drawings (required for sketchFromScratch and sketchOnImage operations)
+          example: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+        alt:
+          type: string
+          nullable: true
+          description: Alternative text for new or modified images
+          example: "Hand-drawn sketch of a castle"
+      oneOf:
+        - title: No Change Operation
+          properties:
+            type:
+              enum: [nochange]
+            imageId:
+              type: string
+              nullable: false
+          required: [type, imageId]
+        - title: Sketch from Scratch Operation
+          properties:
+            type:
+              enum: [sketchFromScratch]
+            canvasData:
+              type: string
+              nullable: false
+          required: [type, canvasData]
+        - title: Sketch on Image Operation
+          properties:
+            type:
+              enum: [sketchOnImage]
+            imageId:
+              type: string
+              nullable: false
+            canvasData:
+              type: string
+              nullable: false
+          required: [type, imageId, canvasData]
+    
+    Story:
+      type: object
+      required:
+        - storyId
+        - storyName
+        - lastEdited
+      properties:
+        storyId:
+          type: string
+          nullable: false
+          description: Unique identifier for the story
+          example: "891415125124"
+        coverImage:
+          type: string
+          nullable: true
+          description: URL to the cover image for the story
+          example: "https://example.com/images/cover123.jpg"
+        storyName:
+          type: string
+          nullable: false
+          description: Name of the story
+          example: "My Adventure Story"
+        lastEdited:
+          type: string
+          format: date-time
+          nullable: false
+          description: Timestamp when the story was last edited
+          example: "2025-05-26T14:30:00Z"
+        storyText:
+          type: string
+          nullable: true
+          description: The text content of the story
+          example: "Once upon a time, in a land far away..."
+        storyImages:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/Image'
+          description: Array of images associated with the story
+
+    User:
+      type: object
+      required:
+        - userId
+      properties:
+        userId:
+          type: string
+          nullable: false
+          description: Unique identifier for the user
+          example: "user123"
+        userName:
+          type: string
+          nullable: true
+          description: Name of the user
+          example: "Steve123"
+        name:
+          type: string
+          nullable: true
+          description: Full name of the user
+          example: "Steve Jobs"
+        stories:
+          type: array
+          nullable: true
+          description: Stories the user has created 
+          items:
+            $ref: '#/components/schemas/StoryHead'
+        accountCreated:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp when the user was created
+          example: "2025-05-26T14:30:00Z"
+
+    Image:
+      type: object
+      required:
+        - imageId
+        - url
+      properties:
+        imageId:
+          type: string
+          nullable: false
+          description: Unique identifier for the image
+          example: "img_891415125124_1"
+        url:
+          type: string
+          nullable: false
+          description: URL to the image
+          example: "https://example.com/images/story-image-1.jpg"
+        alt:
+          type: string
+          nullable: true
+          description: Alternative text for the image
+          example: "A beautiful sunset over the mountains"
+    
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          nullable: false
+          description: Error code
+          example: "INVALID_USER_ID"
+        message:
+          type: string
+          nullable: false
+          description: Human-readable error message
+          example: "The provided user Id is invalid"
