@@ -1,0 +1,717 @@
+openapi: 3.1.0
+info:
+  title: Hackathon FastAPI Backend
+  description: A cross-platform FastAPI backend with live reload capability
+  version: 0.1.0
+paths:
+  /items/createNewUser:
+    post:
+      tags:
+        - items
+      summary: Create New User
+      operationId: createUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+        required: true
+      responses:
+        "201":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        "404":
+          description: Not found
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /items/deleteUser:
+    delete:
+      tags:
+        - items
+      summary: Delete User
+      operationId: deleteUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteUserRequest'
+        required: true
+      responses:
+        "204":
+          description: Successful Response
+        "404":
+          description: Not found
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /items/getUserInformation:
+    get:
+      tags:
+        - items
+      summary: Get User Information
+      operationId: getUserInfo
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Userid
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        "404":
+          description: Not found
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /items/getUserInformationByUserName:
+    get:
+      tags:
+        - items
+      summary: Get User Information By User Name
+      operationId: getUserInfoByUsername
+      parameters:
+        - name: userName
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Username
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        "404":
+          description: Not found
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /items/createNewStory:
+    post:
+      tags:
+        - items
+      summary: Create New Story
+      operationId: createStory
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNewStoryRequest'
+        required: true
+      responses:
+        "201":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoryBasicInfoResponse'
+        "404":
+          description: Not found
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /items/setStoryName:
+    post:
+      tags:
+        - items
+      summary: Set Story Name
+      operationId: updateStoryName
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetStoryNameRequest'
+        required: true
+      responses:
+        "201":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoryBasicInfoResponse'
+        "404":
+          description: Not found
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /items/deleteStory:
+    delete:
+      tags:
+        - items
+      summary: Delete Story
+      operationId: deleteStory
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteStoryRequest'
+        required: true
+      responses:
+        "204":
+          description: Successful Response
+        "404":
+          description: Not found
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /items/getUserStories:
+    get:
+      tags:
+        - items
+      summary: Get User Stories
+      operationId: getUserStories
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Userid
+        - name: maxEntries
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+              - type: "null"
+            default: 50
+            title: Maxentries
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserStoriesResponse'
+        "404":
+          description: Not found
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /items/getStoryById:
+    get:
+      tags:
+        - items
+      summary: Get Story By Id
+      operationId: getStory
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Userid
+        - name: storyId
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Storyid
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoryDetailsResponse'
+        "404":
+          description: Not found
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /items/updateImagesByText:
+    post:
+      tags:
+        - items
+      summary: Update Images By Text
+      operationId: updateImagesByText
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateImagesByTextRequest'
+        required: true
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoryDetailsResponse'
+        "404":
+          description: Not found
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /items/updateTextByImages:
+    post:
+      tags:
+        - items
+      summary: Update Text By Images
+      operationId: updateTextByImages
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTextByImagesRequest'
+        required: true
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoryDetailsResponse'
+        "404":
+          description: Not found
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /items/uploadImage:
+    post:
+      tags:
+        - items
+      summary: Upload Image
+      operationId: uploadImage
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadImageRequest'
+        required: true
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoryDetailsResponse'
+        "404":
+          description: Not found
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /:
+    get:
+      summary: Root
+      operationId: root__get
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /health:
+    get:
+      summary: Health Check
+      operationId: health_check_health_get
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /images/{user_id}/{story_id}/{image_id}:
+    get:
+      summary: Get Image
+      operationId: get_image_images__user_id___story_id___image_id__get
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: User Id
+        - name: story_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Story Id
+        - name: image_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Image Id
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    CreateNewStoryRequest:
+      properties:
+        userId:
+          type: string
+          title: Userid
+        storyName:
+          type: string
+          title: Storyname
+      type: object
+      required:
+        - userId
+        - storyName
+      title: CreateNewStoryRequest
+    CreateUserRequest:
+      properties:
+        userName:
+          type: string
+          title: Username
+        name:
+          type: string
+          title: Name
+      type: object
+      required:
+        - userName
+        - name
+      title: CreateUserRequest
+    DeleteStoryRequest:
+      properties:
+        userId:
+          type: string
+          title: Userid
+        storyId:
+          type: string
+          title: Storyid
+      type: object
+      required:
+        - userId
+        - storyId
+      title: DeleteStoryRequest
+    DeleteUserRequest:
+      properties:
+        userId:
+          type: string
+          title: Userid
+      type: object
+      required:
+        - userId
+      title: DeleteUserRequest
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    ImageResponse:
+      properties:
+        imageId:
+          type: string
+          title: Imageid
+        url:
+          type: string
+          title: Url
+        alt:
+          type: string
+          title: Alt
+      type: object
+      required:
+        - imageId
+        - url
+        - alt
+      title: ImageResponse
+    NoChangeOperation:
+      properties:
+        type:
+          type: string
+          enum:
+            - nochange
+          const: nochange
+          title: Type
+        imageId:
+          type: string
+          title: Imageid
+          description: Id of the existing image
+          example: img_891415125124_1
+      type: object
+      required:
+        - type
+        - imageId
+      title: NoChangeOperation
+    SetStoryNameRequest:
+      properties:
+        userId:
+          type: string
+          title: Userid
+        storyId:
+          type: string
+          title: Storyid
+        storyName:
+          type: string
+          title: Storyname
+      type: object
+      required:
+        - userId
+        - storyId
+        - storyName
+      title: SetStoryNameRequest
+    SketchFromScratchOperation:
+      properties:
+        type:
+          type: string
+          enum:
+            - sketchFromScratch
+          const: sketchFromScratch
+          title: Type
+        canvasData:
+          type: string
+          title: Canvasdata
+          description: Base64 encoded canvas data for drawings
+          example: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...
+        alt:
+          anyOf:
+            - type: string
+            - type: "null"
+          title: Alt
+          description: Alternative text for new or modified images
+          example: Hand-drawn sketch of a castle
+      type: object
+      required:
+        - type
+        - canvasData
+      title: SketchFromScratchOperation
+    SketchOnImageOperation:
+      properties:
+        type:
+          type: string
+          enum:
+            - sketchOnImage
+          const: sketchOnImage
+          title: Type
+        imageId:
+          type: string
+          title: Imageid
+          description: Id of the existing image
+          example: img_891415125124_1
+        canvasData:
+          type: string
+          title: Canvasdata
+          description: Base64 encoded canvas data for drawings
+          example: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...
+        alt:
+          anyOf:
+            - type: string
+            - type: "null"
+          title: Alt
+          description: Alternative text for new or modified images
+          example: Hand-drawn sketch of a castle
+      type: object
+      required:
+        - type
+        - imageId
+        - canvasData
+      title: SketchOnImageOperation
+    StoryBasicInfoResponse:
+      properties:
+        storyId:
+          type: string
+          title: Storyid
+        coverImage:
+          type: string
+          title: Coverimage
+        storyName:
+          type: string
+          title: Storyname
+        lastEdited:
+          type: string
+          title: Lastedited
+      type: object
+      required:
+        - storyId
+        - coverImage
+        - storyName
+        - lastEdited
+      title: StoryBasicInfoResponse
+    StoryDetailsResponse:
+      properties:
+        storyId:
+          type: string
+          title: Storyid
+        storyName:
+          type: string
+          title: Storyname
+        storyText:
+          type: string
+          title: Storytext
+        storyImages:
+          items:
+            $ref: '#/components/schemas/ImageResponse'
+          type: array
+          title: Storyimages
+      type: object
+      required:
+        - storyId
+        - storyName
+        - storyText
+        - storyImages
+      title: StoryDetailsResponse
+    UpdateImagesByTextRequest:
+      properties:
+        userId:
+          type: string
+          title: Userid
+        storyId:
+          type: string
+          title: Storyid
+        updatedText:
+          type: string
+          title: Updatedtext
+      type: object
+      required:
+        - userId
+        - storyId
+        - updatedText
+      title: UpdateImagesByTextRequest
+    UpdateTextByImagesRequest:
+      properties:
+        userId:
+          type: string
+          title: Userid
+        storyId:
+          type: string
+          title: Storyid
+        imageOperations:
+          items:
+            anyOf:
+              - $ref: '#/components/schemas/NoChangeOperation'
+              - $ref: '#/components/schemas/SketchFromScratchOperation'
+              - $ref: '#/components/schemas/SketchOnImageOperation'
+          type: array
+          title: Imageoperations
+          description: List of image operations to perform
+      type: object
+      required:
+        - userId
+        - storyId
+        - imageOperations
+      title: UpdateTextByImagesRequest
+    UploadImageRequest:
+      properties:
+        userId:
+          type: string
+          title: Userid
+        storyId:
+          type: string
+          title: Storyid
+        imageFile:
+          type: string
+          title: Imagefile
+      type: object
+      required:
+        - userId
+        - storyId
+        - imageFile
+      title: UploadImageRequest
+    UserResponse:
+      properties:
+        userId:
+          type: string
+          title: Userid
+        name:
+          type: string
+          title: Name
+        userName:
+          type: string
+          title: Username
+        accountCreated:
+          type: string
+          title: Accountcreated
+      type: object
+      required:
+        - userId
+        - name
+        - userName
+        - accountCreated
+      title: UserResponse
+    UserStoriesResponse:
+      properties:
+        stories:
+          items:
+            $ref: '#/components/schemas/StoryBasicInfoResponse'
+          type: array
+          title: Stories
+      type: object
+      required:
+        - stories
+      title: UserStoriesResponse
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+              - type: string
+              - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+        - loc
+        - msg
+        - type
+      title: ValidationError

@@ -2,18 +2,16 @@ import TextEditor from "@/components/TextEditor";
 import ImageCanvas from "@/components/ImageCanvas";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { useState, useEffect, useRef } from "react";
 import { DrawingMode, SidebarState } from "@/lib/types";
 import { toast } from "sonner";
-import { StoryBody, Story, DefaultService, ImageOperation } from "@/lib/api"
-import { set } from "date-fns";
+import { StoryDetailsResponse, ItemsService, NoChangeOperation } from "@/lib/api"
 import { useUserContext } from "@/App";
 import { FileText, Image, PlusCircle } from "lucide-react";
 
 export default function StoryOverview({ storyId }: { storyId: string }) {
     const { userInformation, setUserInformation } = useUserContext();
-    const [story, setStory] = useState<StoryBody | null>(null);
+    const [story, setStory] = useState<StoryDetailsResponse | null>(null);
     const [loading, setLoading] = useState(true);
 
     const setStoryContent = (content: string) => {
@@ -43,7 +41,7 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
             return;
         }
 
-        const sampleStoryObject: StoryBody = {
+        const sampleStoryObject: StoryDetailsResponse = {
             storyId: storyId,
             storyName: "Sample Story",
             storyText: "A person draws on a whiteboard, explaining how communication leads to community. The diagram shows several stick figures with arrows pointing to a global representation, illustrating how information sharing connects people worldwide.",
@@ -66,7 +64,7 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
 
         setGeneratingImage(true);
         try {
-            const newStory = await DefaultService.postUpdateImagesFromText({
+            const newStory = await ItemsService.updateImagesByText({
                 userId: userInformation.userId,
                 storyId: storyId,
                 updatedText: story.storyText
@@ -88,15 +86,13 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
 
         setAdjustingStory(true);
         try {
-            const updatedStory = await DefaultService.postUpdateTextFromImages({
+            const updatedStory = await ItemsService.updateTextByImages({
                 userId: userInformation.userId, 
                 storyId: storyId, 
                 imageOperations: [
                 {
-                    type: ImageOperation.type.NOCHANGE,
+                    type: NoChangeOperation.type.NOCHANGE,
                     imageId: story?.storyImages?.[0]?.imageId || "1",
-                    canvasData: imageDataUrl || "test",
-                    alt: story?.storyImages?.[0]?.alt || "Drawing"
                 }]
             })
             setStory(updatedStory);

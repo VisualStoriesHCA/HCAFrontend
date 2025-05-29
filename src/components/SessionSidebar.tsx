@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { StoryHead } from "@/lib/api";
+import { StoryBasicInfoResponse } from "@/lib/api";
 import { DefaultService } from "@/lib/api";
 import SessionItem from "./SessionItem";
 import LoadingSpinner from "./LoadingSpinner";
@@ -7,17 +7,18 @@ import { useUserContext } from "@/App";
 import { Button } from "@/components/ui/button";
 
 interface SessionSidebarProps {
-  activeStory: StoryHead | null;
-  stories: StoryHead[];
+  activeStory: StoryBasicInfoResponse | null;
+  stories: StoryBasicInfoResponse[];
   loading: boolean;
-  onSessionSelect: (session: StoryHead) => void;
-  onDeleteStory?: (story: StoryHead) => void;
+  onSessionSelect: (session: StoryBasicInfoResponse) => void;
+  onDeleteStory?: (story: StoryBasicInfoResponse) => void;
   onCreateStory?: () => void;
   className?: string;
 }
 
 const SessionSidebar = ({ activeStory, stories, loading, onSessionSelect, onCreateStory, onDeleteStory, className }: SessionSidebarProps) => {
   const { userInformation } = useUserContext();
+  console.warn(stories)
 
   return (
     <div className={`bg-white border-r h-full overflow-y-auto ${className}`}>
@@ -37,7 +38,7 @@ const SessionSidebar = ({ activeStory, stories, loading, onSessionSelect, onCrea
         </div>
       ) : (
         <div className="divide-y">
-          {stories.map((story) => (
+          {stories?.map((story) => (
             <SessionItem
               key={story.storyId}
               story={story}

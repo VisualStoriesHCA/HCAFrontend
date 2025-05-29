@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { DefaultService } from "@/lib/api";
+import { ItemsService } from "@/lib/api";
 import { useUserContext } from "@/App";
+import { useNavigate } from 'react-router-dom';
 
 const Login: React.FC = () => {
-
     const { userInformation, setUserInformation } = useUserContext();
+    const navigate = useNavigate();
     const [isRegistering, setIsRegistering] = useState(false);
     const [userName, setUserName] = useState('');
     const [name, setName] = useState('');
@@ -18,23 +19,21 @@ const Login: React.FC = () => {
         }
     };
 
-
     useEffect(() => {
         if (userInformation && userInformation.userId) {
             // If userId is already set, redirect to home page
-            window.location.href = '/';
+            navigate('/');
         }
-    }
-    , [userInformation?.userId]);
+    }, [userInformation?.userId, navigate]);
 
     const handleLogin = async (userName: string) => {
         setIsLoading(true);
         try {
-            const data = await DefaultService.getGetUserInformation(userName);
+            const data = await ItemsService.getUserInfoByUsername(userName);
             if (data) {
                 setUserInformation(data);
                 console.log("User logged in successfully:", data);
-                window.location.href = '/';
+                navigate('/'); // Use navigate instead of window.location.href
             } else {
                 setErrorMessage("Username does not exist. Please check your username or register for a new account.");
             }
@@ -49,11 +48,11 @@ const Login: React.FC = () => {
     const handleRegister = async (userName: string, name: string) => {
         setIsLoading(true);
         try {
-            const data = await DefaultService.postCreateNewUser({ userName: userName, name: name });
+            const data = await ItemsService.createUser({"userName": userName, "name": name});
             if (data) {
                 setUserInformation(data);
                 console.log("User registered successfully:", data);
-                window.location.href = '/';
+                navigate('/'); // Use navigate instead of window.location.href
             }
         } catch (error) {
             console.error("Registration failed:", error);

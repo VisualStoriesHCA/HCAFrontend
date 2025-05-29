@@ -1,29 +1,31 @@
 
 import { useState, useEffect } from "react";
 import { DrawingMode, SidebarState } from "@/lib/types";
-import { StoryHead } from "@/lib/api";
+import { UserStoriesResponse, StoryBasicInfoResponse } from "@/lib/api";
 import SessionSidebar from "@/components/SessionSidebar";
 import Navbar from "@/components/Navbar";
 import StoryOverview from "@/components/StoryOverview";
 import { useUserContext } from "@/App";
-import { DefaultService } from "@/lib/api"; 
+import { ItemsService } from "@/lib/api"; 
+
+// Create type of a single story (UserStoriesResponse is an array of stories)
 
 
 const Index = () => {
   const { userInformation, setUserInformation } = useUserContext();
-  const [activeStory, setActiveStory] = useState<StoryHead | null>(null);
+  const [activeStory, setActiveStory] = useState<StoryBasicInfoResponse | null>(null);
   const [sidebarIsVisible, setIsSidebarVisible] = useState<SidebarState>({
     visible: true,
   });
-  const [stories, setStories] = useState<StoryHead[]>([]);
+  const [stories, setStories] = useState<StoryBasicInfoResponse[]>([]);
   const [loading, setLoading] = useState(true);
 
     useEffect(() => {
     const fetchSessions = async () => {
       try {
-        //const data = await DefaultService.getGetUserStories(userId);
+        const data = await ItemsService.getUserStories(userInformation.userId);
         /* temporary hardcoded data */
-        const data: StoryHead[] = [
+        /*const data: UserStoriesResponse[] = [
           {
             storyId: "1",
             storyName: "Session 1",
@@ -41,8 +43,9 @@ const Index = () => {
             storyName: "Session 3",
             lastEdited: "2023-10-03T12:00:00Z",
             coverImage: "https://picsum.photos/200",
-          }]
-        setStories(data);
+          }]*/
+        setStories(data.stories);
+        console.warn(data.stories)
       } catch (error) {
         console.error("Failed to fetch sessions:", error);
       } finally {
@@ -63,7 +66,7 @@ const Index = () => {
 
   const handleCreateNewStory = async () => {
     //const data = await DefaultService.postCreateNewStory({userId: userId, storyName: undefined});
-    const data: StoryHead = {
+    const data: StoryBasicInfoResponse = {
       storyId: String(Date.now()), // Use timestamp as unique ID
       storyName: "New Story",
       lastEdited: new Date().toISOString(),
@@ -74,7 +77,7 @@ const Index = () => {
     setActiveStory(data);
   }
 
-  const handleDeleteStory = async (story: StoryHead) => {
+  const handleDeleteStory = async (story: StoryBasicInfoResponse) => {
     // Call API to delete story
     try{
       //const data = await DefaultService.deleteDeleteStory(userInformation.userId, story.storyId);

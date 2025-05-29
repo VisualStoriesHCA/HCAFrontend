@@ -7,12 +7,17 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
-import { UserDetailsResponse } from "./lib/api";
+import { UserResponse } from "./lib/api";
+// Somewhere in your generated API client or where you initialize it
+import { OpenAPI } from './lib/api';
+
+// Set the base URL
+OpenAPI.BASE = 'http://localhost:8080';
 
 // UserContext Context
 type UserContextType = {
-  userInformation: UserDetailsResponse | null;
-  setUserInformation: (id: UserDetailsResponse | null) => void;
+  userInformation: UserResponse | null;
+  setUserInformation: (id: UserResponse | null) => void;
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -24,14 +29,14 @@ export const useUserContext = () => {
 };
 
 const UserContextProvider = ({ children }: { children: ReactNode }) => {
-  const testUser: UserDetailsResponse = {
+  const testUser: UserResponse = {
     userId: "testUserId",
     userName: "testUser",
     name: "Test User",
     accountCreated: "2023-10-01T12:00:00Z",
   }
   
-  const [userInformation, setUserInformation] = useState<UserDetailsResponse | null>(testUser);
+  const [userInformation, setUserInformation] = useState<UserResponse | null>(null);
   return (
     <UserContext.Provider value={{ userInformation, setUserInformation }}>
       {children}
