@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { StoryDetailsResponse, ItemsService, NoChangeOperation, SketchFromScratchOperation, SketchOnImageOperation  } from "@/lib/api"
 import { useUserContext } from "@/App";
 import { FileText, Image, PlusCircle, Upload } from "lucide-react";
+import { set } from "date-fns";
 
 export default function StoryOverview({ storyId }: { storyId: string }) {
     const { userInformation, setUserInformation } = useUserContext();
@@ -65,7 +66,6 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
             toast.error("Please write a story first");
             return;
         }
-
         setGeneratingImage(true);
         try {
             const newStory = await ItemsService.updateImagesByText({
@@ -73,6 +73,10 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                 storyId: storyId,
                 updatedText: story.storyText
             })
+            // Add an articial delay to simulate image generation time
+            await new Promise(resolve => setTimeout(resolve, 500));
+            console.log("Generated image data:", newStory);
+
             console.log("Received information from image generation:", newStory);
             setStory(newStory);
         } catch (error) {
