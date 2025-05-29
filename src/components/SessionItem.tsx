@@ -1,4 +1,4 @@
-import { StoryHead } from "@/lib/api";
+import { StoryBasicInfoResponse } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import {
   AlertDialog,
@@ -13,34 +13,79 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 interface SessionItemProps {
-  story: StoryHead;
+  story: StoryBasicInfoResponse;
   isActive: boolean;
-  onClick: (story: StoryHead) => void;
-  onDelete: (story: StoryHead) => void;
+  onClick: (story: StoryBasicInfoResponse) => void;
+  onDelete: (story: StoryBasicInfoResponse) => void;
 }
 
 const SessionItem = ({ story, isActive, onClick, onDelete }: SessionItemProps) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [alertDialogOpen, setAlertDialogOpen] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the onClick for the card
+    e.preventDefault();
+    setAlertDialogOpen(true);
   };
 
   const handleConfirmDelete = () => {
+    setAlertDialogOpen(false);
+    setIsDeleting(true);
     onDelete(story);
   };
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Prevent clicks during deletion process OR when alert dialog is open
+    if (isDeleting || alertDialogOpen) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
+    // Double-check that we have a valid story
+    if (!story || !story.storyId) {
+      console.error("SessionItem: Attempted to click on invalid story:", story);
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
+    console.warn("SessionItem: Card clicked for story:", story.storyId);
+    onClick(story);
+  };
+
+  const handleMouseEnter = () => {
+    if (!isDeleting && !alertDialogOpen) {
+      setIsHovered(true);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (!isDeleting && !alertDialogOpen) {
+      setIsHovered(false);
+    }
+  };
+
+  // Don't render if story is invalid or being deleted
+  if (!story || !story.storyId || isDeleting) {
+    return null;
+  }
+
   return (
     <Card
+      ref={cardRef}
       className={`relative p-3 border-b cursor-pointer hover:bg-gray-100 transition-colors ${
         isActive ? "bg-gray-200" : ""
-      }`}
-      onClick={() => onClick(story)}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      } ${isDeleting || alertDialogOpen ? "opacity-50 pointer-events-none" : ""}`}
+      onClick={handleCardClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <div className="flex items-center gap-3">
         {story.coverImage && (
@@ -60,9 +105,9 @@ const SessionItem = ({ story, isActive, onClick, onDelete }: SessionItemProps) =
         </div>
       </div>
 
-      {isHovered && (
+      {isHovered && !isDeleting && (
         <div className="absolute top-2 right-2">
-          <AlertDialog>
+          <AlertDialog open={alertDialogOpen} onOpenChange={setAlertDialogOpen}>
             <AlertDialogTrigger asChild>
               <Button
                 variant="ghost"
@@ -81,7 +126,7 @@ const SessionItem = ({ story, isActive, onClick, onDelete }: SessionItemProps) =
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel onClick={() => setAlertDialogOpen(false)}>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleConfirmDelete}
                   className="bg-red-600 hover:bg-red-700 focus:ring-red-600"

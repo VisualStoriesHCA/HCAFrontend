@@ -6,7 +6,7 @@ import SessionSidebar from "@/components/SessionSidebar";
 import Navbar from "@/components/Navbar";
 import StoryOverview from "@/components/StoryOverview";
 import { useUserContext } from "@/App";
-import { ItemsService } from "@/lib/api"; 
+import { ItemsService } from "@/lib/api";
 
 // Create type of a single story (UserStoriesResponse is an array of stories)
 
@@ -20,30 +20,10 @@ const Index = () => {
   const [stories, setStories] = useState<StoryBasicInfoResponse[]>([]);
   const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
+  useEffect(() => {
     const fetchSessions = async () => {
       try {
         const data = await ItemsService.getUserStories(userInformation.userId);
-        /* temporary hardcoded data */
-        /*const data: UserStoriesResponse[] = [
-          {
-            storyId: "1",
-            storyName: "Session 1",
-            lastEdited: "2023-10-01T12:00:00Z",
-            coverImage: "https://picsum.photos/200",
-          },
-          {
-            storyId: "2",
-            storyName: "Session 2",
-            lastEdited: "2023-10-02T12:00:00Z",
-            coverImage: "https://picsum.photos/200",
-          },
-          {
-            storyId: "3",
-            storyName: "Session 3",
-            lastEdited: "2023-10-03T12:00:00Z",
-            coverImage: "https://picsum.photos/200",
-          }]*/
         setStories(data.stories);
         console.warn(data.stories)
       } catch (error) {
@@ -55,7 +35,7 @@ const Index = () => {
 
     fetchSessions();
   }, []);
-  
+
   // Toggle sidebar visibility
   const toggleSidebar = () => {
     setIsSidebarVisible(prevState => ({
@@ -65,39 +45,25 @@ const Index = () => {
   };
 
   const handleCreateNewStory = async () => {
-    //const data = await DefaultService.postCreateNewStory({userId: userId, storyName: undefined});
-    const data: StoryBasicInfoResponse = {
-      storyId: String(Date.now()), // Use timestamp as unique ID
-      storyName: "New Story",
-      lastEdited: new Date().toISOString(),
-      coverImage: null, // No cover image initially
-    };
-    // Insert data into stories array at index 0
+    const data = await ItemsService.createStory({ "userId": userInformation.userId, "storyName": "New Story" });
     setStories(prevStories => [data, ...prevStories]);
     setActiveStory(data);
   }
 
   const handleDeleteStory = async (story: StoryBasicInfoResponse) => {
     // Call API to delete story
-    try{
-      //const data = await DefaultService.deleteDeleteStory(userInformation.userId, story.storyId);
+    try {
+      console.warn("Active story before deletion:", activeStory?.storyId);
+      console.warn("Deleting story:", story.storyId);
+      const data = await ItemsService.deleteStory({ "userId": userInformation.userId, "storyId": story.storyId });
     }
     catch (error) {
       console.error("Failed to delete story:", error);
       return; // Exit if deletion fails
     }
-    // Update local state to remove the story
     setStories(prevStories => prevStories.filter(s => s.storyId !== story.storyId));
-    // Reset active story if it was the one deleted
     if (activeStory?.storyId === story.storyId) {
-      if( stories.length > 1) {
-        // Set active story to the first one in the list if available
-        setActiveStory(stories[0]);
-      }
-      else {
-        // If no stories left, reset active story to null
-        setActiveStory(null);
-      }
+      setActiveStory(null);
     }
   }
 
@@ -111,7 +77,7 @@ const Index = () => {
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden">
       <Navbar onToggleSidebar={toggleSidebar} />
-      
+
       <div className="flex flex-1 overflow-hidden">
         {/* Left sidebar - conditionally shown based on sidebarState */}
         {sidebarIsVisible.visible && (
@@ -125,8 +91,8 @@ const Index = () => {
             className="w-1/5"
           />
         )}
-        <StoryOverview storyId={activeStory?.storyId}/>
-       
+        <StoryOverview storyId={activeStory?.storyId} />
+
       </div>
     </div>
   );
