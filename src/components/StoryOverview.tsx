@@ -72,10 +72,7 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                 storyId: storyId,
                 updatedText: story.storyText
             })
-            // Add an articial delay to simulate image generation time
-            await new Promise(resolve => setTimeout(resolve, 500));
             console.log("Generated image data:", newStory);
-
             console.log("Received information from image generation:", newStory);
             setStory(newStory);
         } catch (error) {
@@ -87,23 +84,49 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
     };
 
     // Handle updating story from edited image
-    const handleGenerateStory = async (imageDataUrl: string) => {
-        if (drawingMode.mode === "none" && !imageDataUrl) return;
+    const handleGenerateStory = async (imageDataUrl: string, hasUserDrawings: boolean, hasBackgroundImage: boolean) => {
+        console.log("Updating story from image:", { 
+            imageDataUrl: imageDataUrl?.substring(0, 50) + "...", 
+            hasUserDrawings, 
+            hasBackgroundImage 
+        });
 
-        console.log("Updating story from image:", imageDataUrl);
+        // Determine the operation type based on the conditions
+        let imageOperation;
+
+        if (!hasUserDrawings && hasBackgroundImage) {
+            console.log("User has not drawn and there is a background image");
+            imageOperation = {
+                type: NoChangeOperation.type.NOCHANGE,
+                imageId: story?.storyImages?.[0]?.imageId || "1"
+            };
+        } else if (hasUserDrawings && !hasBackgroundImage) {
+            console.log("User has drawn on the canvas and there is no background image");
+            imageOperation = {
+                type: SketchFromScratchOperation.type.SKETCH_FROM_SCRATCH,
+                canvasData: imageDataUrl
+            };
+        } else if (hasUserDrawings && hasBackgroundImage) {
+            console.log("User has drawn on the canvas and there is a background image");
+            imageOperation = {
+                type: SketchOnImageOperation.type.SKETCH_ON_IMAGE,
+                imageId: story?.storyImages?.[0]?.imageId || "1",
+                canvasData: imageDataUrl
+            };
+        } else {
+            // (!hasUserDrawings && !hasBackgroundImage) - this case shouldn't happen in normal usage
+            console.warn("Invalid state: no drawings and no background image");
+            toast.error("No changes to process.");
+            return;
+        }
 
         setAdjustingStory(true);
         try {
             const updatedStory = await ItemsService.updateTextByImages({
                 userId: userInformation.userId,
                 storyId: storyId,
-                imageOperations: [
-                    {
-                        type: SketchOnImageOperation.type.SKETCH_ON_IMAGE,
-                        imageId: story?.storyImages?.[0]?.imageId || "1",
-                        canvasData: imageDataUrl
-                    }]
-            })
+                imageOperations: [imageOperation]
+            });
             setStory(updatedStory);
         } catch (error) {
             console.error("Failed to update story from image:", error);

@@ -7,7 +7,7 @@ interface ImageCanvasProps {
   imageUrl: string | null;
   drawingMode: DrawingMode;
   setDrawingMode: (mode: DrawingMode) => void;
-  onImageEdit: (dataUrl: string) => void;
+  onImageEdit: (dataUrl: string, hasUserDrawings: boolean, hasBackgroundImage: boolean) => void;
   loading: boolean;
   adjusting: boolean;
   className?: string;
@@ -50,6 +50,9 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
   const [history, setHistory] = useState<ImageData[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   
+  // Track if user has made any drawings
+  const [hasUserDrawings, setHasUserDrawings] = useState(false);
+  
   // Helper function to get contexts safely
   const getContexts = () => {
     const mainCanvas = mainCanvasRef.current;
@@ -80,8 +83,9 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
     
     const { mainCtx, drawingCtx, mainCanvas, drawingCanvas } = contexts;
     
-    // Reset error state
+    // Reset error state and drawing state
     setImageError(null);
+    setHasUserDrawings(false);
     
     // Default canvas dimensions
     const defaultWidth = 600;
@@ -147,6 +151,7 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
         // Clear and reset history for new image
         setHistory([]);
         setHistoryIndex(-1);
+        setHasUserDrawings(false);
         
         // Save initial state to history
         setTimeout(() => saveCanvasState(), 100);
@@ -179,6 +184,7 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
           currentDrawingCtx.clearRect(0, 0, drawingWidth, drawingHeight);
           
           setCanvasDimensions({ width: drawingWidth, height: drawingHeight });
+          setHasUserDrawings(false);
           
           // Save initial state to history
           setTimeout(() => saveCanvasState(), 100);
@@ -217,6 +223,7 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
       // Clear and reset history
       setHistory([]);
       setHistoryIndex(-1);
+      setHasUserDrawings(false);
       
       // Save initial state to history
       setTimeout(() => saveCanvasState(), 100);
@@ -369,6 +376,8 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
     }
     
     setIsDrawing(true);
+    // Mark that user has started drawing
+    setHasUserDrawings(true);
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -441,13 +450,16 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
       const { drawingCanvas } = contexts;
       // This will only contain the user's drawings on a transparent background
       const dataUrl = drawingCanvas.toDataURL();
-      onImageEdit(dataUrl);
+      const hasBackgroundImage = !!backgroundImage;
+      onImageEdit(dataUrl, hasUserDrawings, hasBackgroundImage);
     }
   };
 
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
-    onGenerateStory
+    onGenerateStory,
+    hasUserDrawings,
+    hasBackgroundImage: !!backgroundImage
   }));
 
   return (
@@ -510,7 +522,8 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
                   const { drawingCanvas } = contexts;
                   // This sends ONLY the drawings, not the background image
                   const dataUrl = drawingCanvas.toDataURL();
-                  onImageEdit(dataUrl);
+                  const hasBackgroundImage = !!backgroundImage;
+                  onImageEdit(dataUrl, hasUserDrawings, hasBackgroundImage);
                 }
               }}
               adjusting={adjusting}
