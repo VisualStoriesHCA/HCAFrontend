@@ -18,8 +18,6 @@ interface SessionSidebarProps {
 
 const SessionSidebar = ({ activeStory, stories, loading, onSessionSelect, onCreateStory, onDeleteStory, className }: SessionSidebarProps) => {
   const { userInformation } = useUserContext();
-  console.warn(stories)
-
   return (
     <div className={`bg-white border-r h-full overflow-y-auto ${className}`}>
       <div className="p-4 border-b">

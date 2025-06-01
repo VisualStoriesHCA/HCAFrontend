@@ -41,7 +41,6 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
 
     // Set sample story on component mount
     useEffect(() => {
-        console.log("Fetching story with ID:", storyId);
         if (!storyId) {
             setLoading(false);
             return;

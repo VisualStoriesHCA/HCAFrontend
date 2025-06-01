@@ -25,7 +25,6 @@ const Index = () => {
       try {
         const data = await ItemsService.getUserStories(userInformation.userId);
         setStories(data.stories);
-        console.warn(data.stories)
       } catch (error) {
         console.error("Failed to fetch sessions:", error);
       } finally {
@@ -53,8 +52,6 @@ const Index = () => {
   const handleDeleteStory = async (story: StoryBasicInfoResponse) => {
     // Call API to delete story
     try {
-      console.warn("Active story before deletion:", activeStory?.storyId);
-      console.warn("Deleting story:", story.storyId);
       const data = await ItemsService.deleteStory({ "userId": userInformation.userId, "storyId": story.storyId });
     }
     catch (error) {

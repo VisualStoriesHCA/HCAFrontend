@@ -1,73 +1,124 @@
-# Welcome to your Lovable project
+# HCA Frontend
 
-## Project info
+Frontend for the most amazing HCA Project to date.
 
-**URL**: https://lovable.dev/projects/98b08171-8c49-4b21-9dd3-2367728c0f9f
+## Tech Stack
 
-## How can I edit this code?
+- **Framework**: React with TypeScript
+- **Styling**: TailwindCSS with Radix UI components
+- **Package Manager**: Bun (recommended) / npm
+- **API Client**: OpenAPI generated client
 
-There are several ways of editing your application.
+## Prerequisites
 
-**Use Lovable**
+- **Node.js** 18+ 
+- **Bun** (recommended) or npm
+- **Chrome** browser (recommended)
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/98b08171-8c49-4b21-9dd3-2367728c0f9f) and start prompting.
+### Installing Bun
 
-Changes made via Lovable will be committed automatically to this repo.
+```bash
+# macOS/Linux
+curl -fsSL https://bun.sh/install | bash
 
-**Use your preferred IDE**
+# Windows
+powershell -c "irm bun.sh/install.ps1 | iex"
+```
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Getting Started
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### 1. Install Dependencies
 
-Follow these steps:
+**Using Bun (recommended):**
+```bash
+bun install
+```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+**Using npm:**
+```bash
+npm install
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### 2. Start Development Server
 
-# Step 3: Install the necessary dependencies.
-npm i
+**Using Bun:**
+```bash
+bun dev
+```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+**Using npm:**
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The application will be available at `http://localhost:3000`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## API Integration
 
-**Use GitHub Codespaces**
+This project uses an OpenAPI generated client to communicate with the backend server.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Prerequisites
+- Backend server running on `http://localhost:8080`
 
-## What technologies are used for this project?
+### Generating API Client
 
-This project is built with:
+When the backend is running, generate the API client:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```bash
+# Generate the OpenAPI specification
+bash gen_yaml.bash
 
-## How can I deploy this project?
+# Generate the TypeScript client
+bun x openapi --input api-spec.yaml --output ./src/lib/api
+```
 
-Simply open [Lovable](https://lovable.dev/projects/98b08171-8c49-4b21-9dd3-2367728c0f9f) and click on Share -> Publish.
+**With npm:**
+```bash
+# Generate the OpenAPI specification
+bash gen_yaml.bash
 
-## Can I connect a custom domain to my Lovable project?
+# Generate the TypeScript client  
+npx openapi --input api-spec.yaml --output ./src/lib/api
+```
 
-Yes, you can!
+The generated client will be available in `./src/lib/api` and can be imported throughout the application.
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Development
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+### Available Scripts
+
+**Using Bun:**
+- `bun dev` - Start development server
+- `bun build` - Build for production
+- `bun preview` - Preview production build locally
+
+**Using npm:**
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build locally
+
+### Development Setup
+
+1. Ensure backend is running on port 8080
+2. Frontend runs on port 3000
+3. Use Chrome browser for optimal experience
+4. Regenerate API client when backend schema changes
+
+## Project Structure
+
+```
+src/
+├── lib/
+│   └── api/          # Generated OpenAPI client
+├── components/       # React components (subdirectory /ui contains radix ui components)
+├── pages/           # Application pages
+└── styles/          # TailwindCSS styles
+```
+
+## UI Components
+
+This project primarily uses Radix UI components styled with TailwindCSS. When building new components, prefer Radix UI primitives over custom Tailwind implementations for accessibility and consistency.
+
+## Browser Support
+
+Chrome is the recommended browser for development and optimal user experience.
