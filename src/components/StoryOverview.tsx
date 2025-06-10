@@ -1,14 +1,19 @@
 import TextEditor from "@/components/TextEditor";
 import ImageCanvas from "@/components/ImageCanvas";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { useState, useEffect, useRef } from "react";
-import { DrawingMode, SidebarState } from "@/lib/types";
-import { toast } from "sonner";
-import { StoryDetailsResponse, ItemsService, NoChangeOperation, SketchFromScratchOperation, SketchOnImageOperation  } from "@/lib/api"
-import { useUserContext } from "@/App";
-import { FileText, Image, PlusCircle, Upload } from "lucide-react";
-import { set } from "date-fns";
+import {Button} from "@/components/ui/button";
+import {Card, CardContent, CardHeader} from "@/components/ui/card";
+import {useEffect, useRef, useState} from "react";
+import {DrawingMode} from "@/lib/types";
+import {toast} from "sonner";
+import {
+    ItemsService,
+    NoChangeOperation,
+    SketchFromScratchOperation,
+    SketchOnImageOperation,
+    StoryDetailsResponse
+} from "@/lib/api"
+import {useUserContext} from "@/App";
+import {FileText, Image, PlusCircle, Upload} from "lucide-react";
 
 export default function StoryOverview({ storyId }: { storyId: string }) {
     const { userInformation, setUserInformation } = useUserContext();
@@ -305,6 +310,7 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                     onContentChange={setStoryContent}
                     onGenerateImage={handleGenerateImage}
                     generating={generatingImage}
+                    adjusting={adjustingStory}
                     className="flex-1"
                 />
             </div>
