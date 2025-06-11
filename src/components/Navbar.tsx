@@ -30,6 +30,7 @@ interface NavbarProps {
 const Navbar = ({ onToggleSidebar }: NavbarProps) => {
   const { userInformation, setUserInformation } = useUserContext();
   const [showProfileDialog, setShowProfileDialog] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const onLogout = () => {
@@ -38,15 +39,17 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
   };
 
   const onProfile = () => {
-    setDropdownOpen(false); 
+    setDropdownOpen(false);
     setTimeout(() => {
       setShowProfileDialog(true);
     }, 100);
   };
 
   const onSettings = () => {
-    setDropdownOpen(false); 
-    console.log("Settings clicked");
+    setDropdownOpen(false);
+    setTimeout(() => {
+      setShowSettingsDialog(true);
+    }, 100);
   };
 
   // Clean up any potential stuck states
@@ -62,9 +65,18 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
     return () => document.removeEventListener('keydown', handleEscape);
   }, []);
 
-  // Handle dialog close with additional cleanup
-  const handleDialogClose = (open: boolean) => {
+  const handleShowProfileDialogClose = (open: boolean) => {
     setShowProfileDialog(open);
+    handleGenericDialogClose(open);
+  };
+
+  const handleSettingsDialogClose = (open: boolean) => {
+    setShowSettingsDialog(open);
+    handleGenericDialogClose(open);
+  }
+
+  // Handle dialog close with additional cleanup
+  const handleGenericDialogClose = (open: boolean) => {
     if (!open) {
       // Force focus return and cleanup
       setTimeout(() => {
@@ -115,7 +127,7 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
         </div>
       </div>
 
-      <Dialog open={showProfileDialog} onOpenChange={handleDialogClose}>
+      <Dialog open={showProfileDialog} onOpenChange={handleShowProfileDialogClose}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>User Profile</DialogTitle>
@@ -140,6 +152,38 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
           </Card>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={showSettingsDialog} onOpenChange={handleSettingsDialogClose}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Settings</DialogTitle>
+          </DialogHeader>
+          <Card>
+            <CardContent className="space-y-4">
+              <div className="space-y-4"></div>
+              <div className="text-sm text-muted-foreground">
+                Manage your account settings
+              </div>
+              <div className="pt-4 border-t">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    // Add delete user logic here
+                    console.log("Delete user clicked");
+                  }}
+                >
+                  Delete Account
+                </Button>
+                <p className="text-xs text-muted-foreground mt-2">
+                  This action cannot be undone.
+                </p>
+              </div>
+
+          </CardContent>
+        </Card>
+      </DialogContent>
+    </Dialog >
     </>
   );
 };

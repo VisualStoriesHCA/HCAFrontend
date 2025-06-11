@@ -44,6 +44,9 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
     // File input ref for upload functionality
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // Ref to access ImageCanvas methods
+    const imageCanvasRef = useRef<any>(null);
+
     // Set sample story on component mount
     useEffect(() => {
         if (!storyId) {
@@ -56,6 +59,14 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                 console.log("Received story data:", data);
                 setStory(data);
                 setLoading(false);
+                
+                // Clear any existing drawings when story changes
+                setTimeout(() => {
+                    if (imageCanvasRef.current && imageCanvasRef.current.clearAllDrawings) {
+                        imageCanvasRef.current.clearAllDrawings();
+                    }
+                }, 100);
+                
             } catch (error) {
                 console.error("Failed to fetch story:", error);
                 toast.error("Failed to load story. Please try again.");
@@ -80,6 +91,14 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
             console.log("Generated image data:", newStory);
             console.log("Received information from image generation:", newStory);
             setStory(newStory);
+            
+            // Clear any existing drawings after successful image generation
+            setTimeout(() => {
+                if (imageCanvasRef.current && imageCanvasRef.current.clearAllDrawings) {
+                    imageCanvasRef.current.clearAllDrawings();
+                }
+            }, 100);
+            
         } catch (error) {
             console.error("Failed to generate image:", error);
             toast.error("Failed to generate image. Please try again.");
@@ -126,6 +145,11 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
         }
 
         setAdjustingStory(true);
+        console.log("Sending an updateTextByImages request with operation with parameters:", {
+            userId: userInformation.userId,
+            storyId: storyId,
+            imageOperations: [imageOperation]
+        });
         try {
             const updatedStory = await ItemsService.updateTextByImages({
                 userId: userInformation.userId,
@@ -133,6 +157,14 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                 imageOperations: [imageOperation]
             });
             setStory(updatedStory);
+            
+            // Clear drawings after successful story generation
+            setTimeout(() => {
+                if (imageCanvasRef.current && imageCanvasRef.current.clearAllDrawings) {
+                    imageCanvasRef.current.clearAllDrawings();
+                }
+            }, 100);
+            
         } catch (error) {
             console.error("Failed to update story from image:", error);
             toast.error("Failed to update story. Please try again.");
@@ -172,22 +204,22 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                 
                 try {
                     // Process the uploaded sketch similar to how drawings are processed
-                    const data = await ItemsService.uploadImage(
-                        {
+                    const data = await ItemsService.uploadImage({
                         "userId": userInformation.userId,
                         "storyId": storyId, 
                         "imageFile": imageDataUrl
-                        }
-                        )
+                    });
 
-                    
                     setStory(data);
                     toast.success("Sketch uploaded successfully!");
                     
-                    // Update the canvas with the uploaded image
-                    /*if (imageCanvasRef.current) {
-                        imageCanvasRef.current.setUploadedImage(imageDataUrl);
-                    }*/
+                    // Clear any existing drawings after successful upload
+                    setTimeout(() => {
+                        if (imageCanvasRef.current && imageCanvasRef.current.clearAllDrawings) {
+                            imageCanvasRef.current.clearAllDrawings();
+                        }
+                    }, 100);
+                    
                 } catch (error) {
                     console.error("Failed to process uploaded sketch:", error);
                     toast.error("Failed to process uploaded sketch. Please try again.");
@@ -210,9 +242,6 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
             }
         }
     };
-
-    // Ref to access ImageCanvas methods
-    const imageCanvasRef = useRef<any>(null);
 
     // Placeholder component for when no story is selected
     const PlaceholderContent = () => (
