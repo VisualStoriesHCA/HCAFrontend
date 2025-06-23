@@ -1,3 +1,5 @@
+import DOMPurify from "dompurify";
+import { useRef, useEffect } from "react";
 import LoadingSpinner from "./LoadingSpinner";
 
 interface TextEditorProps {
@@ -9,6 +11,8 @@ interface TextEditorProps {
   className?: string;
 }
 
+const ALLOWED_TAGS = ["mark", "b", "i", "u", "p", "br"];
+
 const TextEditor = ({
   content,
   onContentChange,
@@ -16,6 +20,28 @@ const TextEditor = ({
   adjusting,
   className
 }: TextEditorProps) => {
+  const editorRef = useRef<HTMLDivElement>(null);
+  const lastContentRef = useRef<string>("");
+
+  // Only update innerHTML if content prop changed externally
+  useEffect(() => {
+    const sanitized = DOMPurify.sanitize(content, { ALLOWED_TAGS });
+
+    // Avoid unnecessary innerHTML update if content is unchanged
+    if (editorRef.current && sanitized !== lastContentRef.current) {
+      editorRef.current.innerHTML = sanitized;
+      lastContentRef.current = sanitized;
+    }
+  }, [content]);
+
+  const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
+    const dirty = e.currentTarget.innerHTML;
+    const clean = DOMPurify.sanitize(dirty, { ALLOWED_TAGS });
+
+    lastContentRef.current = clean; // mark this change as internal
+    onContentChange(clean);
+  };
+
   return (
     <div className={`relative flex flex-col ${className}`}>
       {adjusting && (
@@ -26,12 +52,13 @@ const TextEditor = ({
           </div>
         </div>
       )}
-      <textarea
-        className="flex-1 p-4 w-full resize-none focus:outline-none"
-        value={content}
-        onChange={(e) => onContentChange(e.target.value)}
+      <div
+        ref={editorRef}
+        contentEditable={!generating && !adjusting}
+        onInput={handleInput}
+        className="flex-1 p-4 w-full min-h-[200px] resize-none border focus:outline-none whitespace-pre-wrap overflow-auto bg-white rounded-md"
         placeholder="Start writing your story here..."
-        disabled={generating || adjusting}
+        suppressContentEditableWarning={true}
       />
     </div>
   );
