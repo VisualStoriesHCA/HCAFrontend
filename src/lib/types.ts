@@ -23,9 +23,9 @@ export interface Image{
 }
 
 export interface DrawingMode {
-  mode: "add" | "remove" | "none" | "erase";
+  mode: "none" | "draw" | "erase";
   color: string;
-  thickness?: number; 
+  thickness: number;
 }
 
 export interface SidebarState {
