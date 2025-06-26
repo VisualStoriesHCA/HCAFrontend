@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/card";
 import { useUserContext } from "@/App";
 import { useState, useEffect } from "react";
+import { ItemsService } from "@/lib/api";
 
 interface NavbarProps {
   onToggleSidebar: () => void;
@@ -88,6 +89,18 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
       }, 50);
     }
   };
+
+  const handleDeleteUser = async () => {
+    try{
+      await ItemsService.deleteUser({userId: userInformation?.userId });
+      setUserInformation(null);
+      console.log("User deleted successfully");
+      setShowSettingsDialog(false);
+    }
+    catch (error) {
+      console.error("Error deleting user:", error);
+    }
+  }
 
   return (
     <>
@@ -169,8 +182,7 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
                   variant="destructive"
                   size="sm"
                   onClick={() => {
-                    // Add delete user logic here
-                    console.log("Delete user clicked");
+                    handleDeleteUser();
                   }}
                 >
                   Delete Account
