@@ -1,6 +1,7 @@
 import { DrawingMode } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { ZoomIn, ZoomOut, Minus, Plus, Undo, Redo } from "lucide-react";
+import ColorPicker from "./ColorPicker";
 
 interface DrawingToolsProps {
   currentMode: DrawingMode;
@@ -35,28 +36,21 @@ const DrawingTools = ({
   canUndo,
   canRedo
 }: DrawingToolsProps) => {
-  const toggleAddMode = () => {
-    if (currentMode.mode === "add") {
-      setMode({ mode: "none", color: "", thickness: currentMode.thickness || 5 });
-    } else {
-      setMode({ mode: "add", color: "#4CAF50", thickness: currentMode.thickness || 5 });
-    }
-  };
-  
-  const toggleRemoveMode = () => {
-    if (currentMode.mode === "remove") {
-      setMode({ mode: "none", color: "", thickness: currentMode.thickness || 5 });
-    } else {
-      setMode({ mode: "remove", color: "#F44336", thickness: currentMode.thickness || 5 });
-    }
+
+  const handleColorChange = (color: string) => {
+    setMode({ 
+      mode: "draw", 
+      color: color, 
+      thickness: currentMode.thickness || 5 
+    });
   };
 
-  const toggleEraseMode = () => {
-    if (currentMode.mode === "erase") {
-      setMode({ mode: "none", color: "", thickness: currentMode.thickness || 5 });
-    } else {
-      setMode({ mode: "erase", color: "", thickness: currentMode.thickness || 15 });
-    }
+  const handleModeChange = (mode: "draw" | "erase") => {
+    setMode({ 
+      mode: mode, 
+      color: currentMode.color || "#000000", 
+      thickness: currentMode.thickness || 5 
+    });
   };
 
   const updateThickness = (thickness: number) => {
@@ -75,65 +69,9 @@ const DrawingTools = ({
 
   return (
     <div className="flex flex-col gap-3 p-3 border-t bg-gray-50">
-      {/* Drawing Mode Buttons */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="flex border rounded overflow-hidden">
-            <Button
-              type="button"
-              variant={currentMode.mode === "add" ? "default" : "outline"}
-              className={`rounded-none text-sm px-3 ${currentMode.mode === "add" ? "bg-green-600 hover:bg-green-700 text-white" : ""}`}
-              onClick={toggleAddMode}
-              disabled={!hasImage}
-            >
-              Add
-            </Button>
-            <Button
-              type="button"
-              variant={currentMode.mode === "remove" ? "default" : "outline"}
-              className={`rounded-none text-sm px-3 ${currentMode.mode === "remove" ? "bg-red-600 hover:bg-red-700 text-white" : ""}`}
-              onClick={toggleRemoveMode}
-              disabled={!hasImage}
-            >
-              Remove
-            </Button>
-            <Button
-              type="button"
-              variant={currentMode.mode === "erase" ? "default" : "outline"}
-              className={`rounded-none text-sm px-3 ${currentMode.mode === "erase" ? "bg-gray-600 hover:bg-gray-700 text-white" : ""}`}
-              onClick={toggleEraseMode}
-              disabled={!hasImage}
-            >
-              Erase
-            </Button>
-          </div>
-          
-          {/* Undo/Redo Buttons */}
-          <div className="flex border rounded overflow-hidden">
-            <Button
-              type="button"
-              variant="outline"
-              className="rounded-none text-sm px-3"
-              onClick={onUndo}
-              disabled={!hasImage || !canUndo}
-              title="Undo"
-            >
-              <Undo className="h-4 w-4" />
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="rounded-none text-sm px-3"
-              onClick={onRedo}
-              disabled={!hasImage || !canRedo}
-              title="Redo"
-            >
-              <Redo className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-        
-        {showGenerateButton && (
+      {/* Generate Button Row (if needed) */}
+      {showGenerateButton && (
+        <div className="flex justify-end">
           <Button
             onClick={onAdjustStory}
             disabled={adjusting}
@@ -141,7 +79,44 @@ const DrawingTools = ({
           >
             {adjusting ? "Generating..." : "Generate Story"}
           </Button>
-        )}
+        </div>
+      )}
+
+      {/* Tools Row - Color Picker with History Controls */}
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <ColorPicker
+            currentColor={currentMode.color || "#000000"}
+            currentMode={currentMode.mode}
+            onColorChange={handleColorChange}
+            onModeChange={handleModeChange}
+            disabled={!hasImage}
+          />
+        </div>
+        
+        {/* History Controls */}
+        <div className="flex border rounded overflow-hidden ml-4">
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-none text-sm px-3"
+            onClick={onUndo}
+            disabled={!hasImage || !canUndo}
+            title="Undo"
+          >
+            <Undo className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-none text-sm px-3"
+            onClick={onRedo}
+            disabled={!hasImage || !canRedo}
+            title="Redo"
+          >
+            <Redo className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Pen Thickness and Zoom Controls */}
@@ -179,7 +154,7 @@ const DrawingTools = ({
             size="sm"
             variant="outline"
             onClick={onZoomOut}
-            disabled={!hasImage || zoom <= 0.25}
+            disabled={!hasImage || zoom <= 0.}
             className="h-7 w-7 p-0"
           >
             <ZoomOut className="h-3 w-3" />
@@ -191,7 +166,7 @@ const DrawingTools = ({
             size="sm"
             variant="outline"
             onClick={onZoomIn}
-            disabled={!hasImage || zoom >= 3}
+            disabled={!hasImage || zoom >= 4}
             className="h-7 w-7 p-0"
           >
             <ZoomIn className="h-3 w-3" />
@@ -203,7 +178,7 @@ const DrawingTools = ({
             disabled={!hasImage}
             className="text-xs px-2 h-7"
           >
-            Reset
+            Fit
           </Button>
         </div>
       </div>
