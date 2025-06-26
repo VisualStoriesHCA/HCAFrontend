@@ -49,10 +49,21 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
 
     // Set sample story on component mount
     useEffect(() => {
+        // Reset all loading states and UI states when storyId changes
+        setGeneratingImage(false);
+        setAdjustingStory(false);
+        setUploadingSketch(false);
+        setDrawingMode({
+            mode: "none",
+            color: ""
+        });
+
         if (!storyId) {
             setLoading(false);
+            setStory(null);
             return;
         }
+        
         const fetchStory = async () => {
             try {
                 const data = await ItemsService.getStory(userInformation.userId, storyId);
