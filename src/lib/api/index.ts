@@ -19,6 +19,7 @@ export { SketchFromScratchOperation } from './models/SketchFromScratchOperation'
 export { SketchOnImageOperation } from './models/SketchOnImageOperation';
 export type { StoryBasicInfoResponse } from './models/StoryBasicInfoResponse';
 export type { StoryDetailsResponse } from './models/StoryDetailsResponse';
+export { StoryState } from './models/StoryState';
 export type { UpdateImagesByTextRequest } from './models/UpdateImagesByTextRequest';
 export type { UpdateTextByImagesRequest } from './models/UpdateTextByImagesRequest';
 export type { UploadImageRequest } from './models/UploadImageRequest';

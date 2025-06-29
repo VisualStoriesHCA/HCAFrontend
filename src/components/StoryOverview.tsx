@@ -10,7 +10,8 @@ import {
     NoChangeOperation,
     SketchFromScratchOperation,
     SketchOnImageOperation,
-    StoryDetailsResponse
+    StoryDetailsResponse,
+    StoryState
 } from "@/lib/api"
 import {useUserContext} from "@/App";
 import {FileText, Image, PlusCircle, Upload} from "lucide-react";
@@ -19,6 +20,10 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
     const { userInformation, setUserInformation } = useUserContext();
     const [story, setStory] = useState<StoryDetailsResponse | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isPolling, setIsPolling] = useState(false);
+
+    // Ref to store the polling interval
+    const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     const setStoryContent = (content: string) => {
         setStory((prevStory) => {
@@ -47,7 +52,68 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
     // Ref to access ImageCanvas methods
     const imageCanvasRef = useRef<any>(null);
 
-    // Set sample story on component mount
+    // Function to fetch story data
+    const fetchStory = async (isPollingCall = false) => {
+        try {
+            const data = await ItemsService.getStoryById(userInformation.userId, storyId);
+            console.log("Received story data:", data);
+            setStory(data);
+            
+            if (!isPollingCall) {
+                setLoading(false);
+            }
+            
+            // Clear any existing drawings when story changes (only on initial load)
+            if (!isPollingCall) {
+                setTimeout(() => {
+                    if (imageCanvasRef.current && imageCanvasRef.current.clearAllDrawings) {
+                        imageCanvasRef.current.clearAllDrawings();
+                    }
+                }, 100);
+            }
+            
+            return data;
+        } catch (error) {
+            console.error("Failed to fetch story:", error);
+            if (!isPollingCall) {
+                toast.error("Failed to load story. Please try again.");
+                setLoading(false);
+            }
+            throw error;
+        }
+    };
+
+    // Function to start polling
+    const startPolling = () => {
+        if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+        }
+        
+        setIsPolling(true);
+        
+        pollingIntervalRef.current = setInterval(async () => {
+            try {
+                const updatedStory = await fetchStory(true);
+                if (updatedStory.state === StoryState.COMPLETED) {
+                    stopPolling();
+                }
+            } catch (error) {
+                console.error("Polling error:", error);
+                // Continue polling even on error, but could implement retry logic here
+            }
+        }, 2000); // Poll every 2 seconds
+    };
+
+    // Function to stop polling
+    const stopPolling = () => {
+        if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+        }
+        setIsPolling(false);
+    };
+
+    // Main effect for fetching story and managing polling
     useEffect(() => {
         // Reset all loading states and UI states when storyId changes
         setGeneratingImage(false);
@@ -58,34 +124,45 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
             color: ""
         });
 
+        // Stop any existing polling
+        stopPolling();
+
         if (!storyId) {
             setLoading(false);
             setStory(null);
             return;
         }
         
-        const fetchStory = async () => {
+        const initializeStory = async () => {
             try {
-                const data = await ItemsService.getStory(userInformation.userId, storyId);
-                console.log("Received story data:", data);
-                setStory(data);
-                setLoading(false);
+                const storyData = await fetchStory();
                 
-                // Clear any existing drawings when story changes
-                setTimeout(() => {
-                    if (imageCanvasRef.current && imageCanvasRef.current.clearAllDrawings) {
-                        imageCanvasRef.current.clearAllDrawings();
-                    }
-                }, 100);
-                
+                // Start polling if story is in pending state
+                if (storyData.state === StoryState.PENDING) {
+                    startPolling();
+                }
             } catch (error) {
-                console.error("Failed to fetch story:", error);
-                toast.error("Failed to load story. Please try again.");
-                setLoading(false);
+                // Error handling is done in fetchStory
             }
-        }
-        fetchStory();
+        };
+
+        initializeStory();
+
+        // Cleanup function
+        return () => {
+            stopPolling();
+        };
     }, [userInformation.userId, storyId]);
+
+    // Cleanup polling on unmount
+    useEffect(() => {
+        return () => {
+            stopPolling();
+        };
+    }, []);
+
+    // Check if story is in pending state (for loading indicators)
+    const isStoryPending = story?.state === StoryState.PENDING;
 
     const handleGenerateImage = async () => {
         if (!story?.storyText.trim()) {
@@ -102,6 +179,11 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
             console.log("Generated image data:", newStory);
             console.log("Received information from image generation:", newStory);
             setStory(newStory);
+            
+            // Start polling if the new story is in pending state
+            if (newStory.state === StoryState.PENDING) {
+                startPolling();
+            }
             
             // Clear any existing drawings after successful image generation
             setTimeout(() => {
@@ -169,6 +251,11 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
             });
             setStory(updatedStory);
             
+            // Start polling if the updated story is in pending state
+            if (updatedStory.state === StoryState.PENDING) {
+                startPolling();
+            }
+            
             // Clear drawings after successful story generation
             setTimeout(() => {
                 if (imageCanvasRef.current && imageCanvasRef.current.clearAllDrawings) {
@@ -222,6 +309,12 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                     });
 
                     setStory(data);
+                    
+                    // Start polling if the updated story is in pending state
+                    if (data.state === StoryState.PENDING) {
+                        startPolling();
+                    }
+                    
                     toast.success("Sketch uploaded successfully!");
                     
                     // Clear any existing drawings after successful upload
@@ -338,10 +431,10 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                     <h2 className="font-semibold">Story Editor</h2>
                     <Button
                         onClick={handleGenerateImage}
-                        disabled={generatingImage || !story?.storyText?.trim()}
+                        disabled={generatingImage || !story?.storyText?.trim() || isStoryPending}
                         variant="default"
                     >
-                        {generatingImage ? "Generating..." : "Generate Image"}
+                        {generatingImage || isStoryPending ? "Generating..." : "Generate Image"}
                     </Button>
                 </div>
 
@@ -349,8 +442,8 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                     content={story?.storyText}
                     onContentChange={setStoryContent}
                     onGenerateImage={handleGenerateImage}
-                    generating={generatingImage}
-                    adjusting={adjustingStory}
+                    generating={generatingImage || isStoryPending}
+                    adjusting={adjustingStory || isStoryPending}
                     className="flex-1"
                 />
             </div>
@@ -362,7 +455,7 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                     <div className="flex gap-2">
                         <Button
                             onClick={handleUploadSketch}
-                            disabled={uploadingSketch || adjustingStory}
+                            disabled={uploadingSketch || adjustingStory || isStoryPending}
                             variant="outline"
                         >
                             <Upload className="h-4 w-4 mr-2" />
@@ -375,10 +468,10 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                                     imageCanvasRef.current.onGenerateStory();
                                 }
                             }}
-                            disabled={adjustingStory}
+                            disabled={adjustingStory || isStoryPending}
                             variant="default"
                         >
-                            {adjustingStory ? "Generating..." : "Generate Story"}
+                            {adjustingStory || isStoryPending ? "Generating..." : "Generate Story"}
                         </Button>
                     </div>
                 </div>
@@ -398,11 +491,11 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                     drawingMode={drawingMode}
                     setDrawingMode={setDrawingMode}
                     onImageEdit={handleGenerateStory}
-                    loading={generatingImage}
+                    loading={generatingImage || isStoryPending}
                     adjusting={adjustingStory}
                     className="flex-1"
                     onGenerateImage={handleGenerateImage}
-                    generatingImage={generatingImage}
+                    generatingImage={generatingImage || isStoryPending}
                     storyContent={story?.storyText}
                 />
             </div>

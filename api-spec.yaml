@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Hackathon FastAPI Backend
+  title: HCA FastAPI Backend
   description: A cross-platform FastAPI backend with live reload capability
   version: 0.1.0
 paths:
@@ -9,7 +9,7 @@ paths:
       tags:
         - items
       summary: Create New User
-      operationId: createUser
+      operationId: createNewUser
       requestBody:
         content:
           application/json:
@@ -59,7 +59,7 @@ paths:
       tags:
         - items
       summary: Get User Information
-      operationId: getUserInfo
+      operationId: getUserInformation
       parameters:
         - name: userId
           in: query
@@ -87,7 +87,7 @@ paths:
       tags:
         - items
       summary: Get User Information By User Name
-      operationId: getUserInfoByUsername
+      operationId: getUserInformationByUserName
       parameters:
         - name: userName
           in: query
@@ -115,7 +115,7 @@ paths:
       tags:
         - items
       summary: Create New Story
-      operationId: createStory
+      operationId: createNewStory
       requestBody:
         content:
           application/json:
@@ -123,7 +123,7 @@ paths:
               $ref: '#/components/schemas/CreateNewStoryRequest'
         required: true
       responses:
-        "201":
+        "200":
           description: Successful Response
           content:
             application/json:
@@ -142,7 +142,7 @@ paths:
       tags:
         - items
       summary: Set Story Name
-      operationId: updateStoryName
+      operationId: setStoryName
       requestBody:
         content:
           application/json:
@@ -150,7 +150,7 @@ paths:
               $ref: '#/components/schemas/SetStoryNameRequest'
         required: true
       responses:
-        "201":
+        "200":
           description: Successful Response
           content:
             application/json:
@@ -204,9 +204,7 @@ paths:
           in: query
           required: false
           schema:
-            anyOf:
-              - type: integer
-              - type: "null"
+            type: integer
             default: 50
             title: Maxentries
       responses:
@@ -229,7 +227,7 @@ paths:
       tags:
         - items
       summary: Get Story By Id
-      operationId: getStory
+      operationId: getStoryById
       parameters:
         - name: userId
           in: query
@@ -376,6 +374,29 @@ paths:
           schema:
             type: string
             title: Story Id
+        - name: image_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Image Id
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /assets/logos/{image_id}:
+    get:
+      summary: Get Image
+      operationId: get_image_assets_logos__image_id__get
+      parameters:
         - name: image_id
           in: path
           required: true
@@ -593,6 +614,8 @@ components:
         storyText:
           type: string
           title: Storytext
+        state:
+          $ref: '#/components/schemas/StoryState'
         storyImages:
           items:
             $ref: '#/components/schemas/ImageResponse'
@@ -603,8 +626,15 @@ components:
         - storyId
         - storyName
         - storyText
+        - state
         - storyImages
       title: StoryDetailsResponse
+    StoryState:
+      type: string
+      enum:
+        - pending
+        - completed
+      title: StoryState
     UpdateImagesByTextRequest:
       properties:
         userId:

@@ -44,7 +44,7 @@ const Index = () => {
   };
 
   const handleCreateNewStory = async () => {
-    const data = await ItemsService.createStory({ "userId": userInformation.userId, "storyName": "New Story" });
+    const data = await ItemsService.createNewStory({ "userId": userInformation.userId, "storyName": "New Story" });
     setStories(prevStories => [data, ...prevStories]);
     setActiveStory(data);
   }

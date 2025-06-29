@@ -54,4 +54,24 @@ export class DefaultService {
             },
         });
     }
+    /**
+     * Get Image
+     * @param imageId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static getImageAssetsLogosImageIdGet(
+        imageId: string,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/assets/logos/{image_id}',
+            path: {
+                'image_id': imageId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
 }

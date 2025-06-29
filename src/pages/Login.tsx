@@ -29,7 +29,7 @@ const Login: React.FC = () => {
     const handleLogin = async (userName: string) => {
         setIsLoading(true);
         try {
-            const data = await ItemsService.getUserInfoByUsername(userName);
+            const data = await ItemsService.getUserInformationByUserName(userName);
             if (data) {
                 setUserInformation(data);
                 console.log("User logged in successfully:", data);
@@ -48,7 +48,7 @@ const Login: React.FC = () => {
     const handleRegister = async (userName: string, name: string) => {
         setIsLoading(true);
         try {
-            const data = await ItemsService.createUser({"userName": userName, "name": name});
+            const data = await ItemsService.createNewUser({"userName": userName, "name": name});
             if (data) {
                 setUserInformation(data);
                 console.log("User registered successfully:", data);

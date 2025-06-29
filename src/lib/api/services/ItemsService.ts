@@ -24,7 +24,7 @@ export class ItemsService {
      * @returns UserResponse Successful Response
      * @throws ApiError
      */
-    public static createUser(
+    public static createNewUser(
         requestBody: CreateUserRequest,
     ): CancelablePromise<UserResponse> {
         return __request(OpenAPI, {
@@ -64,7 +64,7 @@ export class ItemsService {
      * @returns UserResponse Successful Response
      * @throws ApiError
      */
-    public static getUserInfo(
+    public static getUserInformation(
         userId: string,
     ): CancelablePromise<UserResponse> {
         return __request(OpenAPI, {
@@ -85,7 +85,7 @@ export class ItemsService {
      * @returns UserResponse Successful Response
      * @throws ApiError
      */
-    public static getUserInfoByUsername(
+    public static getUserInformationByUserName(
         userName: string,
     ): CancelablePromise<UserResponse> {
         return __request(OpenAPI, {
@@ -106,7 +106,7 @@ export class ItemsService {
      * @returns StoryBasicInfoResponse Successful Response
      * @throws ApiError
      */
-    public static createStory(
+    public static createNewStory(
         requestBody: CreateNewStoryRequest,
     ): CancelablePromise<StoryBasicInfoResponse> {
         return __request(OpenAPI, {
@@ -126,7 +126,7 @@ export class ItemsService {
      * @returns StoryBasicInfoResponse Successful Response
      * @throws ApiError
      */
-    public static updateStoryName(
+    public static setStoryName(
         requestBody: SetStoryNameRequest,
     ): CancelablePromise<StoryBasicInfoResponse> {
         return __request(OpenAPI, {
@@ -169,7 +169,7 @@ export class ItemsService {
      */
     public static getUserStories(
         userId: string,
-        maxEntries?: (number | null),
+        maxEntries: number = 50,
     ): CancelablePromise<UserStoriesResponse> {
         return __request(OpenAPI, {
             method: 'GET',
@@ -191,7 +191,7 @@ export class ItemsService {
      * @returns StoryDetailsResponse Successful Response
      * @throws ApiError
      */
-    public static getStory(
+    public static getStoryById(
         userId: string,
         storyId: string,
     ): CancelablePromise<StoryDetailsResponse> {
