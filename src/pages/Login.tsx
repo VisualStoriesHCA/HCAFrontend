@@ -48,7 +48,7 @@ const Login: React.FC = () => {
     const handleRegister = async (userName: string, name: string) => {
         setIsLoading(true);
         try {
-            const data = await ItemsService.createUser({"userName": userName, "name": name});
+            const data = await ItemsService.createNewUser({"userName": userName, "name": name});
             if (data) {
                 setUserInformation(data);
                 console.log("User registered successfully:", data);
