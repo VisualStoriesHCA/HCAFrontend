@@ -29,7 +29,7 @@ const Login: React.FC = () => {
     const handleLogin = async (userName: string) => {
         setIsLoading(true);
         try {
-            const data = await ItemsService.getUserInfoByUsername(userName);
+            const data = await ItemsService.getUserInformationByUserName(userName);
             if (data) {
                 setUserInformation(data);
                 console.log("User logged in successfully:", data);
