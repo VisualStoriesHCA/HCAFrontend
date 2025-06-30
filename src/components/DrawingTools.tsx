@@ -18,6 +18,7 @@ interface DrawingToolsProps {
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  disabled?: boolean;
 }
 
 const DrawingTools = ({ 
@@ -34,10 +35,12 @@ const DrawingTools = ({
   onUndo,
   onRedo,
   canUndo,
-  canRedo
+  canRedo,
+  disabled = false
 }: DrawingToolsProps) => {
 
   const handleColorChange = (color: string) => {
+    if (disabled) return;
     setMode({ 
       mode: "draw", 
       color: color, 
@@ -46,6 +49,7 @@ const DrawingTools = ({
   };
 
   const handleModeChange = (mode: "draw" | "erase") => {
+    if (disabled) return;
     setMode({ 
       mode: mode, 
       color: currentMode.color || "#000000", 
@@ -54,27 +58,60 @@ const DrawingTools = ({
   };
 
   const updateThickness = (thickness: number) => {
+    if (disabled) return;
     setMode({ ...currentMode, thickness });
   };
 
   const decreaseThickness = () => {
+    if (disabled) return;
     const newThickness = Math.max(1, (currentMode.thickness || 5) - 1);
     updateThickness(newThickness);
   };
 
   const increaseThickness = () => {
+    if (disabled) return;
     const newThickness = Math.min(50, (currentMode.thickness || 5) + 1);
     updateThickness(newThickness);
   };
 
+  const handleAdjustStory = () => {
+    if (disabled) return;
+    onAdjustStory();
+  };
+
+  const handleZoomIn = () => {
+    if (disabled) return;
+    onZoomIn();
+  };
+
+  const handleZoomOut = () => {
+    if (disabled) return;
+    onZoomOut();
+  };
+
+  const handleResetZoom = () => {
+    if (disabled) return;
+    onResetZoom();
+  };
+
+  const handleUndo = () => {
+    if (disabled) return;
+    onUndo();
+  };
+
+  const handleRedo = () => {
+    if (disabled) return;
+    onRedo();
+  };
+
   return (
-    <div className="flex flex-col gap-3 p-3 border-t bg-gray-50">
+    <div className={`flex flex-col gap-3 p-3 border-t bg-gray-50 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
       {/* Generate Button Row (if needed) */}
       {showGenerateButton && (
         <div className="flex justify-end">
           <Button
-            onClick={onAdjustStory}
-            disabled={adjusting}
+            onClick={handleAdjustStory}
+            disabled={adjusting || disabled}
             variant="default"
           >
             {adjusting ? "Generating..." : "Generate Story"}
@@ -90,7 +127,7 @@ const DrawingTools = ({
             currentMode={currentMode.mode}
             onColorChange={handleColorChange}
             onModeChange={handleModeChange}
-            disabled={!hasImage}
+            disabled={!hasImage || disabled}
           />
         </div>
         
@@ -100,8 +137,8 @@ const DrawingTools = ({
             type="button"
             variant="outline"
             className="rounded-none text-sm px-3"
-            onClick={onUndo}
-            disabled={!hasImage || !canUndo}
+            onClick={handleUndo}
+            disabled={!hasImage || !canUndo || disabled}
             title="Undo"
           >
             <Undo className="h-4 w-4" />
@@ -110,8 +147,8 @@ const DrawingTools = ({
             type="button"
             variant="outline"
             className="rounded-none text-sm px-3"
-            onClick={onRedo}
-            disabled={!hasImage || !canRedo}
+            onClick={handleRedo}
+            disabled={!hasImage || !canRedo || disabled}
             title="Redo"
           >
             <Redo className="h-4 w-4" />
@@ -128,7 +165,7 @@ const DrawingTools = ({
             size="sm"
             variant="outline"
             onClick={decreaseThickness}
-            disabled={!hasImage || (currentMode.thickness || 5) <= 1}
+            disabled={!hasImage || (currentMode.thickness || 5) <= 1 || disabled}
             className="h-7 w-7 p-0"
           >
             <Minus className="h-3 w-3" />
@@ -140,7 +177,7 @@ const DrawingTools = ({
             size="sm"
             variant="outline"
             onClick={increaseThickness}
-            disabled={!hasImage || (currentMode.thickness || 5) >= 50}
+            disabled={!hasImage || (currentMode.thickness || 5) >= 50 || disabled}
             className="h-7 w-7 p-0"
           >
             <Plus className="h-3 w-3" />
@@ -153,8 +190,8 @@ const DrawingTools = ({
           <Button
             size="sm"
             variant="outline"
-            onClick={onZoomOut}
-            disabled={!hasImage || zoom <= 0.}
+            onClick={handleZoomOut}
+            disabled={!hasImage || zoom <= 0.1 || disabled}
             className="h-7 w-7 p-0"
           >
             <ZoomOut className="h-3 w-3" />
@@ -165,8 +202,8 @@ const DrawingTools = ({
           <Button
             size="sm"
             variant="outline"
-            onClick={onZoomIn}
-            disabled={!hasImage || zoom >= 4}
+            onClick={handleZoomIn}
+            disabled={!hasImage || zoom >= 4 || disabled}
             className="h-7 w-7 p-0"
           >
             <ZoomIn className="h-3 w-3" />
@@ -174,8 +211,8 @@ const DrawingTools = ({
           <Button
             size="sm"
             variant="outline"
-            onClick={onResetZoom}
-            disabled={!hasImage}
+            onClick={handleResetZoom}
+            disabled={!hasImage || disabled}
             className="text-xs px-2 h-7"
           >
             Fit

@@ -431,7 +431,7 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                     <h2 className="font-semibold">Story Editor</h2>
                     <Button
                         onClick={handleGenerateImage}
-                        disabled={generatingImage || !story?.storyText?.trim() || isStoryPending}
+                        disabled={generatingImage || !story?.storyText?.trim() || isStoryPending || adjustingStory}
                         variant="default"
                     >
                         {generatingImage || isStoryPending ? "Generating..." : "Generate Image"}
@@ -455,7 +455,7 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                     <div className="flex gap-2">
                         <Button
                             onClick={handleUploadSketch}
-                            disabled={uploadingSketch || adjustingStory || isStoryPending}
+                            disabled={uploadingSketch || adjustingStory || isStoryPending || generatingImage}
                             variant="outline"
                         >
                             <Upload className="h-4 w-4 mr-2" />
@@ -468,10 +468,10 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                                     imageCanvasRef.current.onGenerateStory();
                                 }
                             }}
-                            disabled={adjustingStory || isStoryPending}
+                            disabled={adjustingStory || isStoryPending || generatingImage}
                             variant="default"
                         >
-                            {adjustingStory || isStoryPending ? "Generating..." : "Generate Story"}
+                            {adjustingStory || isStoryPending || generatingImage ? "Generating..." : "Generate Story"}
                         </Button>
                     </div>
                 </div>
