@@ -22,6 +22,9 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
     const [loading, setLoading] = useState(true);
     const [isPolling, setIsPolling] = useState(false);
 
+    // Track the current storyId to prevent cross-story updates
+    const currentStoryIdRef = useRef<string>("");
+    
     // Ref to store the polling interval
     const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -53,29 +56,35 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
     const imageCanvasRef = useRef<any>(null);
 
     // Function to fetch story data
-    const fetchStory = async (isPollingCall = false) => {
+    const fetchStory = async (isPollingCall = false, targetStoryId?: string) => {
+        const storyIdToFetch = targetStoryId || storyId;
+        
         try {
-            const data = await ItemsService.getStoryById(userInformation.userId, storyId);
+            const data = await ItemsService.getStoryById(userInformation.userId, storyIdToFetch);
             console.log("Received story data:", data);
-            setStory(data);
             
-            if (!isPollingCall) {
-                setLoading(false);
-            }
-            
-            // Clear any existing drawings when story changes (only on initial load)
-            if (!isPollingCall) {
-                setTimeout(() => {
-                    if (imageCanvasRef.current && imageCanvasRef.current.clearAllDrawings) {
-                        imageCanvasRef.current.clearAllDrawings();
-                    }
-                }, 100);
+            // CRITICAL: Only update state if this is still the current story
+            if (currentStoryIdRef.current === storyIdToFetch) {
+                setStory(data);
+                
+                if (!isPollingCall) {
+                    setLoading(false);
+                }
+                
+                // Clear any existing drawings when story changes (only on initial load)
+                if (!isPollingCall) {
+                    setTimeout(() => {
+                        if (imageCanvasRef.current && imageCanvasRef.current.clearAllDrawings) {
+                            imageCanvasRef.current.clearAllDrawings();
+                        }
+                    }, 100);
+                }
             }
             
             return data;
         } catch (error) {
             console.error("Failed to fetch story:", error);
-            if (!isPollingCall) {
+            if (!isPollingCall && currentStoryIdRef.current === storyIdToFetch) {
                 toast.error("Failed to load story. Please try again.");
                 setLoading(false);
             }
@@ -83,8 +92,10 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
         }
     };
 
-    // Function to start polling
-    const startPolling = () => {
+    // Function to start polling with story ID tracking
+    const startPolling = (targetStoryId?: string) => {
+        const storyIdToTrack = targetStoryId || storyId;
+        
         if (pollingIntervalRef.current) {
             clearInterval(pollingIntervalRef.current);
         }
@@ -93,8 +104,14 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
         
         pollingIntervalRef.current = setInterval(async () => {
             try {
-                const updatedStory = await fetchStory(true);
-                if (updatedStory.state === StoryState.COMPLETED) {
+                // Only poll if we're still on the same story
+                if (currentStoryIdRef.current === storyIdToTrack) {
+                    const updatedStory = await fetchStory(true, storyIdToTrack);
+                    if (updatedStory && updatedStory.state === StoryState.COMPLETED) {
+                        stopPolling();
+                    }
+                } else {
+                    // Stop polling if story has changed
                     stopPolling();
                 }
             } catch (error) {
@@ -115,6 +132,9 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
 
     // Main effect for fetching story and managing polling
     useEffect(() => {
+        // Update the current story ID reference
+        currentStoryIdRef.current = storyId;
+        
         // Reset all loading states and UI states when storyId changes
         setGeneratingImage(false);
         setAdjustingStory(false);
@@ -133,12 +153,16 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
             return;
         }
         
+        // Clear story state immediately to prevent showing previous story content
+        setStory(null);
+        setLoading(true);
+        
         const initializeStory = async () => {
             try {
                 const storyData = await fetchStory();
                 
-                // Start polling if story is in pending state
-                if (storyData.state === StoryState.PENDING) {
+                // Start polling if story is in pending state and we're still on the same story
+                if (storyData && storyData.state === StoryState.PENDING && currentStoryIdRef.current === storyId) {
                     startPolling();
                 }
             } catch (error) {
@@ -169,34 +193,44 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
             toast.error("Please write a story first");
             return;
         }
+        
+        const operationStoryId = storyId; // Capture current storyId
         setGeneratingImage(true);
+        
         try {
             const newStory = await ItemsService.updateImagesByText({
                 userId: userInformation.userId,
-                storyId: storyId,
+                storyId: operationStoryId,
                 updatedText: story.storyText
             })
             console.log("Generated image data:", newStory);
-            console.log("Received information from image generation:", newStory);
-            setStory(newStory);
             
-            // Start polling if the new story is in pending state
-            if (newStory.state === StoryState.PENDING) {
-                startPolling();
-            }
-            
-            // Clear any existing drawings after successful image generation
-            setTimeout(() => {
-                if (imageCanvasRef.current && imageCanvasRef.current.clearAllDrawings) {
-                    imageCanvasRef.current.clearAllDrawings();
+            // Only update if we're still on the same story
+            if (currentStoryIdRef.current === operationStoryId) {
+                setStory(newStory);
+                
+                // Start polling if the new story is in pending state
+                if (newStory.state === StoryState.PENDING) {
+                    startPolling(operationStoryId);
                 }
-            }, 100);
+                
+                // Clear any existing drawings after successful image generation
+                setTimeout(() => {
+                    if (imageCanvasRef.current && imageCanvasRef.current.clearAllDrawings) {
+                        imageCanvasRef.current.clearAllDrawings();
+                    }
+                }, 100);
+            }
             
         } catch (error) {
             console.error("Failed to generate image:", error);
-            toast.error("Failed to generate image. Please try again.");
+            if (currentStoryIdRef.current === operationStoryId) {
+                toast.error("Failed to generate image. Please try again.");
+            }
         } finally {
-            setGeneratingImage(false);
+            if (currentStoryIdRef.current === operationStoryId) {
+                setGeneratingImage(false);
+            }
         }
     };
 
@@ -237,37 +271,47 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
             return;
         }
 
+        const operationStoryId = storyId; // Capture current storyId
         setAdjustingStory(true);
         console.log("Sending an updateTextByImages request with operation with parameters:", {
             userId: userInformation.userId,
-            storyId: storyId,
+            storyId: operationStoryId,
             imageOperations: [imageOperation]
         });
+        
         try {
             const updatedStory = await ItemsService.updateTextByImages({
                 userId: userInformation.userId,
-                storyId: storyId,
+                storyId: operationStoryId,
                 imageOperations: [imageOperation]
             });
-            setStory(updatedStory);
             
-            // Start polling if the updated story is in pending state
-            if (updatedStory.state === StoryState.PENDING) {
-                startPolling();
-            }
-            
-            // Clear drawings after successful story generation
-            setTimeout(() => {
-                if (imageCanvasRef.current && imageCanvasRef.current.clearAllDrawings) {
-                    imageCanvasRef.current.clearAllDrawings();
+            // Only update if we're still on the same story
+            if (currentStoryIdRef.current === operationStoryId) {
+                setStory(updatedStory);
+                
+                // Start polling if the updated story is in pending state
+                if (updatedStory.state === StoryState.PENDING) {
+                    startPolling(operationStoryId);
                 }
-            }, 100);
+                
+                // Clear drawings after successful story generation
+                setTimeout(() => {
+                    if (imageCanvasRef.current && imageCanvasRef.current.clearAllDrawings) {
+                        imageCanvasRef.current.clearAllDrawings();
+                    }
+                }, 100);
+            }
             
         } catch (error) {
             console.error("Failed to update story from image:", error);
-            toast.error("Failed to update story. Please try again.");
+            if (currentStoryIdRef.current === operationStoryId) {
+                toast.error("Failed to update story. Please try again.");
+            }
         } finally {
-            setAdjustingStory(false);
+            if (currentStoryIdRef.current === operationStoryId) {
+                setAdjustingStory(false);
+            }
         }
     };
 
@@ -292,7 +336,9 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
             return;
         }
 
+        const operationStoryId = storyId; // Capture current storyId
         setUploadingSketch(true);
+        
         try {
             // Convert file to data URL
             const reader = new FileReader();
@@ -304,42 +350,53 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                     // Process the uploaded sketch similar to how drawings are processed
                     const data = await ItemsService.uploadImage({
                         "userId": userInformation.userId,
-                        "storyId": storyId, 
+                        "storyId": operationStoryId, 
                         "imageFile": imageDataUrl
                     });
 
-                    setStory(data);
-                    
-                    // Start polling if the updated story is in pending state
-                    if (data.state === StoryState.PENDING) {
-                        startPolling();
-                    }
-                    
-                    toast.success("Sketch uploaded successfully!");
-                    
-                    // Clear any existing drawings after successful upload
-                    setTimeout(() => {
-                        if (imageCanvasRef.current && imageCanvasRef.current.clearAllDrawings) {
-                            imageCanvasRef.current.clearAllDrawings();
+                    // Only update if we're still on the same story
+                    if (currentStoryIdRef.current === operationStoryId) {
+                        setStory(data);
+                        
+                        // Start polling if the updated story is in pending state
+                        if (data.state === StoryState.PENDING) {
+                            startPolling(operationStoryId);
                         }
-                    }, 100);
+                        
+                        toast.success("Sketch uploaded successfully!");
+                        
+                        // Clear any existing drawings after successful upload
+                        setTimeout(() => {
+                            if (imageCanvasRef.current && imageCanvasRef.current.clearAllDrawings) {
+                                imageCanvasRef.current.clearAllDrawings();
+                            }
+                        }, 100);
+                    }
                     
                 } catch (error) {
                     console.error("Failed to process uploaded sketch:", error);
-                    toast.error("Failed to process uploaded sketch. Please try again.");
+                    if (currentStoryIdRef.current === operationStoryId) {
+                        toast.error("Failed to process uploaded sketch. Please try again.");
+                    }
                 }
             };
             
             reader.onerror = () => {
-                toast.error("Failed to read the uploaded file");
+                if (currentStoryIdRef.current === operationStoryId) {
+                    toast.error("Failed to read the uploaded file");
+                }
             };
             
             reader.readAsDataURL(file);
         } catch (error) {
             console.error("Error uploading sketch:", error);
-            toast.error("Failed to upload sketch. Please try again.");
+            if (currentStoryIdRef.current === operationStoryId) {
+                toast.error("Failed to upload sketch. Please try again.");
+            }
         } finally {
-            setUploadingSketch(false);
+            if (currentStoryIdRef.current === operationStoryId) {
+                setUploadingSketch(false);
+            }
             // Reset file input
             if (fileInputRef.current) {
                 fileInputRef.current.value = '';
@@ -410,10 +467,23 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
         </div>
     );
 
+    // Loading component that covers previous content
+    const LoadingOverlay = () => (
+        <div className="absolute inset-0 bg-white bg-opacity-95 flex items-center justify-center z-10">
+            <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <p className="text-gray-500">Loading story...</p>
+            </div>
+        </div>
+    );
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full">
-                <p className="text-gray-500">Loading story...</p>
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                    <p className="text-gray-500">Loading story...</p>
+                </div>
             </div>
         );
     }
@@ -424,7 +494,10 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
     }
 
     return (
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden relative">
+            {/* Loading overlay when story is null but storyId exists */}
+            {!story && storyId && <LoadingOverlay />}
+            
             {/* Left panel - 50% of remaining width */}
             <div className="flex flex-col w-1/2 border-r">
                 <div className="p-4 border-b flex items-center justify-between">
