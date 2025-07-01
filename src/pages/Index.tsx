@@ -49,20 +49,25 @@ const Index = () => {
     setActiveStory(data);
   }
 
-  const handleDeleteStory = async (story: StoryBasicInfoResponse) => {
-    // Call API to delete story
+  const _handleDeleteStory = async (story: StoryBasicInfoResponse) => {
+    handleDeleteStory(story.storyId);
+  }
+
+  const handleDeleteStory = async (storyId: string) => {
+     // Call API to delete story
     try {
-      const data = await ItemsService.deleteStory({ "userId": userInformation.userId, "storyId": story.storyId });
+      const data = await ItemsService.deleteStory({ "userId": userInformation.userId, "storyId": storyId });
     }
     catch (error) {
       console.error("Failed to delete story:", error);
       return; // Exit if deletion fails
     }
-    setStories(prevStories => prevStories.filter(s => s.storyId !== story.storyId));
-    if (activeStory?.storyId === story.storyId) {
+    setStories(prevStories => prevStories.filter(s => s.storyId !== storyId));
+    if (activeStory?.storyId === storyId) {
       setActiveStory(null);
     }
   }
+
 
   if (!userInformation || !userInformation.userId) {
     // Redicect to /login page is userId is not set
@@ -82,13 +87,13 @@ const Index = () => {
             activeStory={activeStory}
             stories={stories}
             loading={loading}
-            onDeleteStory={handleDeleteStory}
+            onDeleteStory={_handleDeleteStory}
             onCreateStory={() => handleCreateNewStory()} // Reset active story when creating a new one
             onSessionSelect={setActiveStory}
             className="w-1/5"
           />
         )}
-        <StoryOverview storyId={activeStory?.storyId} />
+        <StoryOverview storyId={activeStory?.storyId} onStoryDelete={handleDeleteStory} />
 
       </div>
     </div>

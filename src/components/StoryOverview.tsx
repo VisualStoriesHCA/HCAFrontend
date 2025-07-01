@@ -1,10 +1,10 @@
 import TextEditor from "@/components/TextEditor";
 import ImageCanvas from "@/components/ImageCanvas";
-import {Button} from "@/components/ui/button";
-import {Card, CardContent, CardHeader} from "@/components/ui/card";
-import {useEffect, useRef, useState} from "react";
-import {DrawingMode} from "@/lib/types";
-import {toast} from "sonner";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { useEffect, useRef, useState } from "react";
+import { DrawingMode } from "@/lib/types";
+import { toast } from "sonner";
 import {
     ItemsService,
     NoChangeOperation,
@@ -13,20 +13,22 @@ import {
     StoryDetailsResponse,
     StoryState
 } from "@/lib/api"
-import {useUserContext} from "@/App";
-import {FileText, Image, PlusCircle, Upload} from "lucide-react";
+import { useUserContext } from "@/App";
+import { FileText, Image, PlusCircle, Upload } from "lucide-react";
 
-export default function StoryOverview({ storyId }: { storyId: string }) {
+export default function StoryOverview({ storyId, onStoryDelete }: { storyId: string, onStoryDelete?: (storyId: string) => void }) {
     const { userInformation, setUserInformation } = useUserContext();
     const [story, setStory] = useState<StoryDetailsResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [isPolling, setIsPolling] = useState(false);
+    const [pollingError, setPollingError] = useState(false);
 
     // Track the current storyId to prevent cross-story updates
     const currentStoryIdRef = useRef<string>("");
-    
-    // Ref to store the polling interval
+
+    // Ref to store the polling interval and timeout
     const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const setStoryContent = (content: string) => {
         setStory((prevStory) => {
@@ -58,19 +60,19 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
     // Function to fetch story data
     const fetchStory = async (isPollingCall = false, targetStoryId?: string) => {
         const storyIdToFetch = targetStoryId || storyId;
-        
+
         try {
             const data = await ItemsService.getStoryById(userInformation.userId, storyIdToFetch);
             console.log("Received story data:", data);
-            
+
             // CRITICAL: Only update state if this is still the current story
             if (currentStoryIdRef.current === storyIdToFetch) {
                 setStory(data);
-                
+
                 if (!isPollingCall) {
                     setLoading(false);
                 }
-                
+
                 // Clear any existing drawings when story changes (only on initial load)
                 if (!isPollingCall) {
                     setTimeout(() => {
@@ -80,7 +82,7 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                     }, 100);
                 }
             }
-            
+
             return data;
         } catch (error) {
             console.error("Failed to fetch story:", error);
@@ -95,13 +97,35 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
     // Function to start polling with story ID tracking
     const startPolling = (targetStoryId?: string) => {
         const storyIdToTrack = targetStoryId || storyId;
-        
+
         if (pollingIntervalRef.current) {
             clearInterval(pollingIntervalRef.current);
         }
-        
+        if (pollingTimeoutRef.current) {
+            clearTimeout(pollingTimeoutRef.current);
+        }
+
         setIsPolling(true);
-        
+        setPollingError(false); // Clear any existing polling errors
+
+        // Set up 60-second timeout
+        pollingTimeoutRef.current = setTimeout(() => {
+            console.error("Polling timeout: Story generation took longer than 60 seconds");
+            if (currentStoryIdRef.current === storyIdToTrack) {
+                // Clear all loading states when timeout occurs
+                setGeneratingImage(false);
+                setAdjustingStory(false);
+                setUploadingSketch(false);
+                setPollingError(true);
+                setIsPolling(false);
+
+            }
+            if (pollingIntervalRef.current) {
+                clearInterval(pollingIntervalRef.current);
+                pollingIntervalRef.current = null;
+            }
+        }, 60000); // 60 seconds
+
         pollingIntervalRef.current = setInterval(async () => {
             try {
                 // Only poll if we're still on the same story
@@ -127,6 +151,10 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
             clearInterval(pollingIntervalRef.current);
             pollingIntervalRef.current = null;
         }
+        if (pollingTimeoutRef.current) {
+            clearTimeout(pollingTimeoutRef.current);
+            pollingTimeoutRef.current = null;
+        }
         setIsPolling(false);
     };
 
@@ -134,11 +162,12 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
     useEffect(() => {
         // Update the current story ID reference
         currentStoryIdRef.current = storyId;
-        
+
         // Reset all loading states and UI states when storyId changes
         setGeneratingImage(false);
         setAdjustingStory(false);
         setUploadingSketch(false);
+        setPollingError(false);
         setDrawingMode({
             mode: "none",
             color: ""
@@ -152,15 +181,15 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
             setStory(null);
             return;
         }
-        
+
         // Clear story state immediately to prevent showing previous story content
         setStory(null);
         setLoading(true);
-        
+
         const initializeStory = async () => {
             try {
                 const storyData = await fetchStory();
-                
+
                 // Start polling if story is in pending state and we're still on the same story
                 if (storyData && storyData.state === StoryState.PENDING && currentStoryIdRef.current === storyId) {
                     startPolling();
@@ -193,10 +222,10 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
             toast.error("Please write a story first");
             return;
         }
-        
+
         const operationStoryId = storyId; // Capture current storyId
         setGeneratingImage(true);
-        
+
         try {
             const newStory = await ItemsService.updateImagesByText({
                 userId: userInformation.userId,
@@ -204,16 +233,16 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                 updatedText: story.storyText
             })
             console.log("Generated image data:", newStory);
-            
+
             // Only update if we're still on the same story
             if (currentStoryIdRef.current === operationStoryId) {
                 setStory(newStory);
-                
+
                 // Start polling if the new story is in pending state
                 if (newStory.state === StoryState.PENDING) {
                     startPolling(operationStoryId);
                 }
-                
+
                 // Clear any existing drawings after successful image generation
                 setTimeout(() => {
                     if (imageCanvasRef.current && imageCanvasRef.current.clearAllDrawings) {
@@ -221,7 +250,7 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                     }
                 }, 100);
             }
-            
+
         } catch (error) {
             console.error("Failed to generate image:", error);
             if (currentStoryIdRef.current === operationStoryId) {
@@ -236,10 +265,10 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
 
     // Handle updating story from edited image
     const handleGenerateStory = async (imageDataUrl: string, hasUserDrawings: boolean, hasBackgroundImage: boolean) => {
-        console.log("Updating story from image:", { 
-            imageDataUrl: imageDataUrl?.substring(0, 50) + "...", 
-            hasUserDrawings, 
-            hasBackgroundImage 
+        console.log("Updating story from image:", {
+            imageDataUrl: imageDataUrl?.substring(0, 50) + "...",
+            hasUserDrawings,
+            hasBackgroundImage
         });
 
         // Determine the operation type based on the conditions
@@ -278,23 +307,23 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
             storyId: operationStoryId,
             imageOperations: [imageOperation]
         });
-        
+
         try {
             const updatedStory = await ItemsService.updateTextByImages({
                 userId: userInformation.userId,
                 storyId: operationStoryId,
                 imageOperations: [imageOperation]
             });
-            
+
             // Only update if we're still on the same story
             if (currentStoryIdRef.current === operationStoryId) {
                 setStory(updatedStory);
-                
+
                 // Start polling if the updated story is in pending state
                 if (updatedStory.state === StoryState.PENDING) {
                     startPolling(operationStoryId);
                 }
-                
+
                 // Clear drawings after successful story generation
                 setTimeout(() => {
                     if (imageCanvasRef.current && imageCanvasRef.current.clearAllDrawings) {
@@ -302,7 +331,7 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                     }
                 }, 100);
             }
-            
+
         } catch (error) {
             console.error("Failed to update story from image:", error);
             if (currentStoryIdRef.current === operationStoryId) {
@@ -338,33 +367,33 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
 
         const operationStoryId = storyId; // Capture current storyId
         setUploadingSketch(true);
-        
+
         try {
             // Convert file to data URL
             const reader = new FileReader();
             reader.onload = async (e) => {
                 const imageDataUrl = e.target?.result as string;
                 console.log(imageDataUrl);
-                
+
                 try {
                     // Process the uploaded sketch similar to how drawings are processed
                     const data = await ItemsService.uploadImage({
                         "userId": userInformation.userId,
-                        "storyId": operationStoryId, 
+                        "storyId": operationStoryId,
                         "imageFile": imageDataUrl
                     });
 
                     // Only update if we're still on the same story
                     if (currentStoryIdRef.current === operationStoryId) {
                         setStory(data);
-                        
+
                         // Start polling if the updated story is in pending state
                         if (data.state === StoryState.PENDING) {
                             startPolling(operationStoryId);
                         }
-                        
+
                         toast.success("Sketch uploaded successfully!");
-                        
+
                         // Clear any existing drawings after successful upload
                         setTimeout(() => {
                             if (imageCanvasRef.current && imageCanvasRef.current.clearAllDrawings) {
@@ -372,7 +401,7 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                             }
                         }, 100);
                     }
-                    
+
                 } catch (error) {
                     console.error("Failed to process uploaded sketch:", error);
                     if (currentStoryIdRef.current === operationStoryId) {
@@ -380,13 +409,13 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                     }
                 }
             };
-            
+
             reader.onerror = () => {
                 if (currentStoryIdRef.current === operationStoryId) {
                     toast.error("Failed to read the uploaded file");
                 }
             };
-            
+
             reader.readAsDataURL(file);
         } catch (error) {
             console.error("Error uploading sketch:", error);
@@ -403,6 +432,26 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
             }
         }
     };
+
+    const handleDeleteStory = () => {
+        setIsPolling(false);
+        onStoryDelete?.(storyId);
+        // Reset story state
+        setStory(null);
+        setLoading(false);
+        // Clear current story ID reference
+        currentStoryIdRef.current = "";
+        // Clear polling references
+        if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+        }
+        if (pollingTimeoutRef.current) {
+            clearTimeout(pollingTimeoutRef.current);
+            pollingTimeoutRef.current = null;
+        }
+    }
+
 
     // Placeholder component for when no story is selected
     const PlaceholderContent = () => (
@@ -467,26 +516,7 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
         </div>
     );
 
-    // Loading component that covers previous content
-    const LoadingOverlay = () => (
-        <div className="absolute inset-0 bg-white bg-opacity-95 flex items-center justify-center z-10">
-            <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                <p className="text-gray-500">Loading story...</p>
-            </div>
-        </div>
-    );
-
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                    <p className="text-gray-500">Loading story...</p>
-                </div>
-            </div>
-        );
-    }
+   
 
     // Show placeholder when no storyId is provided
     if (!storyId) {
@@ -495,16 +525,15 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
 
     return (
         <div className="flex flex-1 overflow-hidden relative">
-            {/* Loading overlay when story is null but storyId exists */}
-            {!story && storyId && <LoadingOverlay />}
-            
+            {/* Loading overlay when story is null but storyId exists, or when there's a polling error */}
+
             {/* Left panel - 50% of remaining width */}
             <div className="flex flex-col w-1/2 border-r">
                 <div className="p-4 border-b flex items-center justify-between">
                     <h2 className="font-semibold">Story Editor</h2>
                     <Button
                         onClick={handleGenerateImage}
-                        disabled={generatingImage || !story?.storyText?.trim() || isStoryPending || adjustingStory}
+                        disabled={generatingImage || !story?.storyText?.trim() || isStoryPending || adjustingStory || pollingError}
                         variant="default"
                     >
                         {generatingImage || isStoryPending ? "Generating..." : "Generate Image"}
@@ -528,7 +557,7 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                     <div className="flex gap-2">
                         <Button
                             onClick={handleUploadSketch}
-                            disabled={uploadingSketch || adjustingStory || isStoryPending || generatingImage}
+                            disabled={uploadingSketch || adjustingStory || isStoryPending || generatingImage || pollingError}
                             variant="outline"
                         >
                             <Upload className="h-4 w-4 mr-2" />
@@ -541,7 +570,7 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                                     imageCanvasRef.current.onGenerateStory();
                                 }
                             }}
-                            disabled={adjustingStory || isStoryPending || generatingImage}
+                            disabled={adjustingStory || isStoryPending || generatingImage || pollingError}
                             variant="default"
                         >
                             {adjustingStory || isStoryPending || generatingImage ? "Generating..." : "Generate Story"}
@@ -572,6 +601,53 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                     storyContent={story?.storyText}
                 />
             </div>
+
+            {/* Bottom-right timeout notification */}
+            {pollingError && story && (
+                <Card className="fixed bottom-4 right-4 w-[360px] shadow-lg border-red-200 bg-red-50 z-50">
+                    <CardHeader className="pb-2">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                                <div className="h-6 w-6 bg-red-500 rounded-full flex items-center justify-center mr-2">
+                                    <span className="text-white text-xs font-bold">!</span>
+                                </div>
+                                <h3 className="font-medium text-red-800">Our pens might have broken...</h3>
+                            </div>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setPollingError(false)}
+                                className="h-6 w-6 p-0 text-red-600 hover:text-red-800"
+                            >
+                                ×
+                            </Button>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                        <p className="text-sm text-red-700 mb-3">
+                            This story seems to be stuck in an endless plot twist. Sometimes the best solution is to crumple it up and start with a fresh page.
+                        </p>
+                        <div className="flex gap-2">
+                            <Button
+                                onClick={() => handleDeleteStory()}
+                                variant="default"
+                                size="sm"
+                                className="text-white bg-red-600 hover:bg-red-700"
+                            >
+                                Delete Story
+                            </Button>
+                            <Button
+                                onClick={() => setIsPolling(false)}
+                                variant="outline"
+                                size="sm"
+                                className="text-red-700 border-red-300 hover:bg-red-100 "
+                                >
+                                Dismiss
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }
