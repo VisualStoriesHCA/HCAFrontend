@@ -73,10 +73,10 @@ function canvasReducer(state: CanvasState, action: CanvasAction): CanvasState {
     case 'SET_USER_DRAWINGS':
       return { ...state, hasUserDrawings: action.payload };
     case 'SET_HISTORY':
-      return { 
-        ...state, 
-        history: action.payload.history, 
-        historyIndex: action.payload.index 
+      return {
+        ...state,
+        history: action.payload.history,
+        historyIndex: action.payload.index
       };
     case 'ADD_TO_HISTORY':
       const newHistory = [...state.history.slice(0, state.historyIndex + 1), action.payload];
@@ -128,17 +128,17 @@ function useCanvasOperations(canvasRef: React.RefObject<HTMLCanvasElement>, stat
   const getContext = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
-    
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
-    
+
     return { canvas, ctx };
   }, [canvasRef]);
 
   const clearCanvas = useCallback(() => {
     const contexts = getContext();
     if (!contexts) return;
-    
+
     const { ctx } = contexts;
     ctx.clearRect(0, 0, state.dimensions.width, state.dimensions.height);
   }, [getContext, state.dimensions]);
@@ -146,17 +146,17 @@ function useCanvasOperations(canvasRef: React.RefObject<HTMLCanvasElement>, stat
   const redrawCanvas = useCallback(() => {
     const contexts = getContext();
     if (!contexts) return;
-    
+
     const { ctx } = contexts;
-    
+
     // Clear canvas
     clearCanvas();
-    
+
     // Draw background
     if (state.backgroundImage) {
       ctx.drawImage(
-        state.backgroundImage, 
-        state.imagePosition.x, 
+        state.backgroundImage,
+        state.imagePosition.x,
         state.imagePosition.y,
         state.imagePosition.width,
         state.imagePosition.height
@@ -182,13 +182,13 @@ function useDrawing(
   drawingMode: DrawingMode
 ) {
   const [isDrawing, setIsDrawing] = useState(false);
-  const [lastPoint, setLastPoint] = useState<{x: number, y: number} | null>(null);
+  const [lastPoint, setLastPoint] = useState<{ x: number, y: number } | null>(null);
   const { getContext, redrawCanvas } = useCanvasOperations(canvasRef, state);
 
   const saveToHistory = useCallback(() => {
     const contexts = getContext();
     if (!contexts) return;
-    
+
     const { ctx } = contexts;
     const imageData = ctx.getImageData(0, 0, state.dimensions.width, state.dimensions.height);
     dispatch({ type: 'ADD_TO_HISTORY', payload: imageData });
@@ -198,22 +198,22 @@ function useDrawing(
   const getBackgroundImageData = useCallback(() => {
     const contexts = getContext();
     if (!contexts) return null;
-    
+
     const { canvas, ctx } = contexts;
-    
+
     // Create a temporary canvas to draw just the background
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = canvas.width;
     tempCanvas.height = canvas.height;
     const tempCtx = tempCanvas.getContext('2d');
-    
+
     if (!tempCtx) return null;
-    
+
     // Draw background
     if (state.backgroundImage) {
       tempCtx.drawImage(
-        state.backgroundImage, 
-        state.imagePosition.x, 
+        state.backgroundImage,
+        state.imagePosition.x,
         state.imagePosition.y,
         state.imagePosition.width,
         state.imagePosition.height
@@ -222,7 +222,7 @@ function useDrawing(
       tempCtx.fillStyle = "#f0f0f0";
       tempCtx.fillRect(0, 0, state.dimensions.width, state.dimensions.height);
     }
-    
+
     return tempCtx.getImageData(0, 0, canvas.width, canvas.height);
   }, [getContext, state.backgroundImage, state.imagePosition, state.dimensions]);
 
@@ -255,7 +255,7 @@ function useDrawing(
       ctx.strokeStyle = drawingMode.color || "#000000";
       ctx.beginPath();
       ctx.moveTo(x, y);
-      
+
       console.log('Starting to draw with color:', drawingMode.color || "#000000");
     }
 
@@ -282,25 +282,25 @@ function useDrawing(
       if (backgroundImageData) {
         const thickness = drawingMode.thickness || 15;
         const radius = thickness / 2;
-        
+
         // Draw a line between last point and current point
         const dx = x - lastPoint.x;
         const dy = y - lastPoint.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
         const steps = Math.max(1, Math.floor(distance));
-        
+
         for (let i = 0; i <= steps; i++) {
           const t = steps > 0 ? i / steps : 0;
           const px = lastPoint.x + dx * t;
           const py = lastPoint.y + dy * t;
-          
+
           // Copy background pixels in a circle around this point
           for (let dy = -radius; dy <= radius; dy++) {
             for (let dx = -radius; dx <= radius; dx++) {
               if (dx * dx + dy * dy <= radius * radius) {
                 const srcX = Math.round(px + dx);
                 const srcY = Math.round(py + dy);
-                
+
                 if (srcX >= 0 && srcX < canvas.width && srcY >= 0 && srcY < canvas.height) {
                   const srcIndex = (srcY * canvas.width + srcX) * 4;
                   const imageData = ctx.getImageData(srcX, srcY, 1, 1);
@@ -336,7 +336,7 @@ function useDrawing(
 
     setIsDrawing(false);
     setLastPoint(null);
-    
+
     // Save to history after drawing is complete
     setTimeout(() => saveToHistory(), 0);
   }, [isDrawing, getContext, saveToHistory]);
@@ -380,20 +380,20 @@ function useImageLoader(
       // Calculate how to fit the image to the available container size
       const availableWidth = state.containerSize.width - 100; // Account for padding
       const availableHeight = state.containerSize.height - 200; // Account for tools and padding
-      
+
       // Calculate scale to fit image within available space
       const scaleX = availableWidth / image.width;
       const scaleY = availableHeight / image.height;
       const fitScale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond original size
-      
+
       // Calculate fitted dimensions
       const fittedWidth = image.width * fitScale;
       const fittedHeight = image.height * fitScale;
-      
+
       // Canvas size is larger to allow for drawing around the image
       const canvasWidth = Math.max(fittedWidth * 1.5, fittedWidth + 200);
       const canvasHeight = Math.max(fittedHeight * 1.5, fittedHeight + 200);
-      
+
       // Center the image on the canvas
       const imageX = (canvasWidth - fittedWidth) / 2;
       const imageY = (canvasHeight - fittedHeight) / 2;
@@ -406,12 +406,14 @@ function useImageLoader(
       }
 
       dispatch({ type: 'SET_DIMENSIONS', payload: { width: canvasWidth, height: canvasHeight } });
-      dispatch({ type: 'SET_IMAGE_POSITION', payload: { 
-        x: imageX, 
-        y: imageY, 
-        width: fittedWidth, 
-        height: fittedHeight 
-      } });
+      dispatch({
+        type: 'SET_IMAGE_POSITION', payload: {
+          x: imageX,
+          y: imageY,
+          width: fittedWidth,
+          height: fittedHeight
+        }
+      });
       dispatch({ type: 'SET_BACKGROUND_IMAGE', payload: image });
       dispatch({ type: 'SET_BASE_ZOOM', payload: fitScale });
       dispatch({ type: 'SET_ZOOM', payload: 1 }); // 1 = 100% of fitted size
@@ -421,7 +423,7 @@ function useImageLoader(
 
     image.onerror = () => {
       dispatch({ type: 'SET_IMAGE_ERROR', payload: "Failed to load image. Please try another one." });
-      
+
       // Fallback to empty canvas
       const defaultWidth = Math.min(800, state.containerSize.width - 100);
       const defaultHeight = Math.min(600, state.containerSize.height - 200);
@@ -460,13 +462,13 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [state, dispatch] = useReducer(canvasReducer, initialCanvasState);
-  
+
   const { redrawCanvas } = useCanvasOperations(canvasRef, state);
   const { loadImage } = useImageLoader(dispatch, canvasRef, state);
   const { startDrawing, draw, stopDrawing, saveToHistory } = useDrawing(
-    canvasRef, 
-    state, 
-    dispatch, 
+    canvasRef,
+    state,
+    dispatch,
     drawingMode
   );
 
@@ -475,15 +477,15 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
     const updateContainerSize = () => {
       if (containerRef.current) {
         const { width, height } = containerRef.current.getBoundingClientRect();
-        dispatch({ 
-          type: 'SET_CONTAINER_SIZE', 
-          payload: { width: width || 800, height: height || 600 } 
+        dispatch({
+          type: 'SET_CONTAINER_SIZE',
+          payload: { width: width || 800, height: height || 600 }
         });
       }
     };
 
     updateContainerSize();
-    
+
     const resizeObserver = new ResizeObserver(updateContainerSize);
     if (containerRef.current) {
       resizeObserver.observe(containerRef.current);
@@ -510,7 +512,7 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
         ctx.lineJoin = "round";
         // CRITICAL FIX: Set the stroke color here
         ctx.strokeStyle = drawingMode.color || "#000000";
-        
+
         console.log('Canvas context updated with new drawing mode:', {
           color: drawingMode.color,
           thickness: drawingMode.thickness,
@@ -523,7 +525,7 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
   // Redraw canvas when background image or dimensions change
   useEffect(() => {
     redrawCanvas();
-    
+
     // Save initial state to history if this is a fresh canvas
     if (state.history.length === 0) {
       setTimeout(() => saveToHistory(), 0);
@@ -605,31 +607,11 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
     hasBackgroundImage: !!state.backgroundImage,
     clearAllDrawings
   }));
-
   return (
     <div ref={containerRef} className={`flex flex-col h-full ${className} relative`}>
-      {/* Loading overlays */}
-      {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 z-10">
-          <div className="flex items-center">
-            <LoadingSpinner size="lg" className="text-white" />
-            <span className="ml-3 text-white">Generating image...</span>
-          </div>
-        </div>
-      )}
-
-      {adjusting && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 z-10">
-          <div className="flex items-center">
-            <LoadingSpinner size="lg" className="text-white" />
-            <span className="ml-3 text-white">Updating story...</span>
-          </div>
-        </div>
-      )}
-
       {/* Canvas container */}
       <div className="flex-1 min-h-0 overflow-auto p-0">
-        <div 
+        <div
           className="relative"
           style={{
             width: `${state.dimensions.width * state.zoom + 200}px`,
@@ -638,11 +620,11 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
             minHeight: '100%'
           }}
         >
-          <div 
+          <div
             className="absolute flex items-center justify-center"
             style={{
               top: '100px',
-              left: '100px',  
+              left: '100px',
               right: '100px',
               bottom: '100px'
             }}
@@ -665,7 +647,7 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
                   boxShadow: "0 4px 8px rgba(0,0,0,0.1)"
                 }}
               />
-                           
+
               {state.imageError && (
                 <div className="absolute inset-0 flex items-center justify-center bg-red-100 bg-opacity-80 text-red-600 p-4 text-center">
                   {state.imageError}
@@ -693,8 +675,21 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
           onRedo={handleRedo}
           canUndo={state.historyIndex > 0}
           canRedo={state.historyIndex < state.history.length - 1}
+          disabled={loading || adjusting}
         />
       </div>
+
+      {/* Loading overlays - positioned to cover entire component */}
+      {(loading || adjusting) && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 z-40">
+          <div className="flex items-center">
+            <LoadingSpinner size="lg" className="text-white" />
+            <span className="ml-3 text-white">
+              {loading ? "Generating image..." : "Updating story..."}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 });
