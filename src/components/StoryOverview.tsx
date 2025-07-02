@@ -188,6 +188,13 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
             return;
         }
 
+        // Validate specific image formats
+        const supportedFormats = ['image/jpeg', 'image/jpg', 'image/png'];
+        if (!supportedFormats.includes(file.type)) {
+            toast.error("Only PNG, JPEG, and JPG image formats are supported");
+            return;
+        }
+
         // Validate file size (e.g., max 10MB)
         if (file.size > 10 * 1024 * 1024) {
             toast.error("File size must be less than 10MB");
@@ -220,9 +227,14 @@ export default function StoryOverview({ storyId }: { storyId: string }) {
                         }
                     }, 100);
                     
-                } catch (error) {
+                } catch (error: any) {
                     console.error("Failed to process uploaded sketch:", error);
-                    toast.error("Failed to process uploaded sketch. Please try again.");
+                    // Show more specific error message if available from backend
+                    if (error.body?.detail) {
+                        toast.error(error.body.detail);
+                    } else {
+                        toast.error("Failed to process uploaded sketch. Please try again.");
+                    }
                 }
             };
             
