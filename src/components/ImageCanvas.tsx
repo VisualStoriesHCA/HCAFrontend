@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, forwardRef, useImperativeHandle } from "react";
+import { useRef, useState, useEffect, forwardRef, useImperativeHandle, useReducer, useCallback } from "react";
 import { DrawingMode } from "@/lib/types";
 import DrawingTools from "./DrawingTools";
 import LoadingSpinner from "./LoadingSpinner";
@@ -16,6 +16,437 @@ interface ImageCanvasProps {
   storyContent: string;
 }
 
+// Canvas state management with reducer
+interface CanvasState {
+  dimensions: { width: number; height: number };
+  imagePosition: { x: number; y: number; width: number; height: number };
+  backgroundImage: HTMLImageElement | null;
+  hasUserDrawings: boolean;
+  history: ImageData[];
+  historyIndex: number;
+  zoom: number;
+  baseZoom: number; // The zoom level that fits the image to screen
+  panOffset: { x: number; y: number };
+  imageError: string | null;
+  containerSize: { width: number; height: number };
+}
+
+type CanvasAction =
+  | { type: 'SET_DIMENSIONS'; payload: { width: number; height: number } }
+  | { type: 'SET_IMAGE_POSITION'; payload: { x: number; y: number; width: number; height: number } }
+  | { type: 'SET_BACKGROUND_IMAGE'; payload: HTMLImageElement | null }
+  | { type: 'SET_USER_DRAWINGS'; payload: boolean }
+  | { type: 'SET_HISTORY'; payload: { history: ImageData[]; index: number } }
+  | { type: 'ADD_TO_HISTORY'; payload: ImageData }
+  | { type: 'UNDO' }
+  | { type: 'REDO' }
+  | { type: 'CLEAR_HISTORY' }
+  | { type: 'SET_ZOOM'; payload: number }
+  | { type: 'SET_BASE_ZOOM'; payload: number }
+  | { type: 'SET_PAN_OFFSET'; payload: { x: number; y: number } }
+  | { type: 'SET_IMAGE_ERROR'; payload: string | null }
+  | { type: 'SET_CONTAINER_SIZE'; payload: { width: number; height: number } }
+  | { type: 'RESET_STATE' };
+
+const initialCanvasState: CanvasState = {
+  dimensions: { width: 600, height: 400 },
+  imagePosition: { x: 0, y: 0, width: 0, height: 0 },
+  backgroundImage: null,
+  hasUserDrawings: false,
+  history: [],
+  historyIndex: -1,
+  zoom: 1,
+  baseZoom: 1,
+  panOffset: { x: 0, y: 0 },
+  imageError: null,
+  containerSize: { width: 800, height: 600 },
+};
+
+function canvasReducer(state: CanvasState, action: CanvasAction): CanvasState {
+  switch (action.type) {
+    case 'SET_DIMENSIONS':
+      return { ...state, dimensions: action.payload };
+    case 'SET_IMAGE_POSITION':
+      return { ...state, imagePosition: action.payload };
+    case 'SET_BACKGROUND_IMAGE':
+      return { ...state, backgroundImage: action.payload };
+    case 'SET_USER_DRAWINGS':
+      return { ...state, hasUserDrawings: action.payload };
+    case 'SET_HISTORY':
+      return {
+        ...state,
+        history: action.payload.history,
+        historyIndex: action.payload.index
+      };
+    case 'ADD_TO_HISTORY':
+      const newHistory = [...state.history.slice(0, state.historyIndex + 1), action.payload];
+      const limitedHistory = newHistory.length > 50 ? newHistory.slice(-50) : newHistory;
+      return {
+        ...state,
+        history: limitedHistory,
+        historyIndex: limitedHistory.length - 1,
+      };
+    case 'UNDO':
+      if (state.historyIndex > 0) {
+        return {
+          ...state,
+          historyIndex: state.historyIndex - 1,
+          hasUserDrawings: state.historyIndex - 1 > 0
+        };
+      }
+      return state;
+    case 'REDO':
+      if (state.historyIndex < state.history.length - 1) {
+        return {
+          ...state,
+          historyIndex: state.historyIndex + 1,
+          hasUserDrawings: state.historyIndex + 1 > 0
+        };
+      }
+      return state;
+    case 'CLEAR_HISTORY':
+      return { ...state, history: [], historyIndex: -1, hasUserDrawings: false };
+    case 'SET_ZOOM':
+      return { ...state, zoom: action.payload };
+    case 'SET_BASE_ZOOM':
+      return { ...state, baseZoom: action.payload };
+    case 'SET_PAN_OFFSET':
+      return { ...state, panOffset: action.payload };
+    case 'SET_CONTAINER_SIZE':
+      return { ...state, containerSize: action.payload };
+    case 'SET_IMAGE_ERROR':
+      return { ...state, imageError: action.payload };
+    case 'RESET_STATE':
+      return { ...initialCanvasState };
+    default:
+      return state;
+  }
+}
+
+// Custom hook for canvas operations
+function useCanvasOperations(canvasRef: React.RefObject<HTMLCanvasElement>, state: CanvasState) {
+  const getContext = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    return { canvas, ctx };
+  }, [canvasRef]);
+
+  const clearCanvas = useCallback(() => {
+    const contexts = getContext();
+    if (!contexts) return;
+
+    const { ctx } = contexts;
+    ctx.clearRect(0, 0, state.dimensions.width, state.dimensions.height);
+  }, [getContext, state.dimensions]);
+
+  const redrawCanvas = useCallback(() => {
+    const contexts = getContext();
+    if (!contexts) return;
+
+    const { ctx } = contexts;
+
+    // Clear canvas
+    clearCanvas();
+
+    // Draw background
+    if (state.backgroundImage) {
+      ctx.drawImage(
+        state.backgroundImage,
+        state.imagePosition.x,
+        state.imagePosition.y,
+        state.imagePosition.width,
+        state.imagePosition.height
+      );
+    } else {
+      ctx.fillStyle = "#f0f0f0";
+      ctx.fillRect(0, 0, state.dimensions.width, state.dimensions.height);
+    }
+  }, [getContext, clearCanvas, state.backgroundImage, state.imagePosition, state.dimensions]);
+
+  return {
+    getContext,
+    clearCanvas,
+    redrawCanvas,
+  };
+}
+
+// Custom hook for drawing operations
+function useDrawing(
+  canvasRef: React.RefObject<HTMLCanvasElement>,
+  state: CanvasState,
+  dispatch: React.Dispatch<CanvasAction>,
+  drawingMode: DrawingMode
+) {
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [lastPoint, setLastPoint] = useState<{ x: number, y: number } | null>(null);
+  const { getContext, redrawCanvas } = useCanvasOperations(canvasRef, state);
+
+  const saveToHistory = useCallback(() => {
+    const contexts = getContext();
+    if (!contexts) return;
+
+    const { ctx } = contexts;
+    const imageData = ctx.getImageData(0, 0, state.dimensions.width, state.dimensions.height);
+    dispatch({ type: 'ADD_TO_HISTORY', payload: imageData });
+  }, [getContext, state.dimensions, dispatch]);
+
+  // Create a function to get background-only canvas data for erasing
+  const getBackgroundImageData = useCallback(() => {
+    const contexts = getContext();
+    if (!contexts) return null;
+
+    const { canvas, ctx } = contexts;
+
+    // Create a temporary canvas to draw just the background
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvas.width;
+    tempCanvas.height = canvas.height;
+    const tempCtx = tempCanvas.getContext('2d');
+
+    if (!tempCtx) return null;
+
+    // Draw background
+    if (state.backgroundImage) {
+      tempCtx.drawImage(
+        state.backgroundImage,
+        state.imagePosition.x,
+        state.imagePosition.y,
+        state.imagePosition.width,
+        state.imagePosition.height
+      );
+    } else {
+      tempCtx.fillStyle = "#f0f0f0";
+      tempCtx.fillRect(0, 0, state.dimensions.width, state.dimensions.height);
+    }
+
+    return tempCtx.getImageData(0, 0, canvas.width, canvas.height);
+  }, [getContext, state.backgroundImage, state.imagePosition, state.dimensions]);
+
+  const startDrawing = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (drawingMode.mode === "none") return;
+
+    const contexts = getContext();
+    if (!contexts) return;
+
+    const { canvas, ctx } = contexts;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+
+    setLastPoint({ x, y });
+
+    // Setup drawing context
+    ctx.lineWidth = drawingMode.thickness || 5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    if (drawingMode.mode === "erase") {
+      // For eraser, we'll handle it differently in the draw function
+      ctx.globalCompositeOperation = "source-over";
+    } else {
+      ctx.globalCompositeOperation = "source-over";
+      // CRITICAL FIX: Set the stroke color here
+      ctx.strokeStyle = drawingMode.color || "#000000";
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+
+      console.log('Starting to draw with color:', drawingMode.color || "#000000");
+    }
+
+    setIsDrawing(true);
+    dispatch({ type: 'SET_USER_DRAWINGS', payload: true });
+  }, [drawingMode, getContext, dispatch]);
+
+  const draw = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDrawing || drawingMode.mode === "none" || !lastPoint) return;
+
+    const contexts = getContext();
+    if (!contexts) return;
+
+    const { canvas, ctx } = contexts;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+
+    if (drawingMode.mode === "erase") {
+      // For erasing, we restore background pixels along the path
+      const backgroundImageData = getBackgroundImageData();
+      if (backgroundImageData) {
+        const thickness = drawingMode.thickness || 15;
+        const radius = thickness / 2;
+
+        // Draw a line between last point and current point
+        const dx = x - lastPoint.x;
+        const dy = y - lastPoint.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const steps = Math.max(1, Math.floor(distance));
+
+        for (let i = 0; i <= steps; i++) {
+          const t = steps > 0 ? i / steps : 0;
+          const px = lastPoint.x + dx * t;
+          const py = lastPoint.y + dy * t;
+
+          // Copy background pixels in a circle around this point
+          for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+              if (dx * dx + dy * dy <= radius * radius) {
+                const srcX = Math.round(px + dx);
+                const srcY = Math.round(py + dy);
+
+                if (srcX >= 0 && srcX < canvas.width && srcY >= 0 && srcY < canvas.height) {
+                  const srcIndex = (srcY * canvas.width + srcX) * 4;
+                  const imageData = ctx.getImageData(srcX, srcY, 1, 1);
+                  imageData.data[0] = backgroundImageData.data[srcIndex];     // R
+                  imageData.data[1] = backgroundImageData.data[srcIndex + 1]; // G
+                  imageData.data[2] = backgroundImageData.data[srcIndex + 2]; // B
+                  imageData.data[3] = backgroundImageData.data[srcIndex + 3]; // A
+                  ctx.putImageData(imageData, srcX, srcY);
+                }
+              }
+            }
+          }
+        }
+      }
+    } else {
+      // Normal drawing
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+
+    setLastPoint({ x, y });
+  }, [isDrawing, drawingMode, getContext, lastPoint, getBackgroundImageData]);
+
+  const stopDrawing = useCallback(() => {
+    if (!isDrawing) return;
+
+    const contexts = getContext();
+    if (contexts) {
+      const { ctx } = contexts;
+      // Always reset to source-over after any drawing operation
+      ctx.globalCompositeOperation = "source-over";
+    }
+
+    setIsDrawing(false);
+    setLastPoint(null);
+
+    // Save to history after drawing is complete
+    setTimeout(() => saveToHistory(), 0);
+  }, [isDrawing, getContext, saveToHistory]);
+
+  return {
+    isDrawing,
+    startDrawing,
+    draw,
+    stopDrawing,
+    saveToHistory,
+  };
+}
+
+// Custom hook for image loading with proper fitting
+function useImageLoader(
+  dispatch: React.Dispatch<CanvasAction>,
+  canvasRef: React.RefObject<HTMLCanvasElement>,
+  state: CanvasState
+) {
+  const loadImage = useCallback((imageUrl: string | null) => {
+    dispatch({ type: 'SET_IMAGE_ERROR', payload: null });
+
+    if (!imageUrl) {
+      // Create empty canvas
+      const defaultWidth = Math.min(800, state.containerSize.width - 100);
+      const defaultHeight = Math.min(600, state.containerSize.height - 200);
+
+      dispatch({ type: 'SET_DIMENSIONS', payload: { width: defaultWidth, height: defaultHeight } });
+      dispatch({ type: 'SET_BACKGROUND_IMAGE', payload: null });
+      dispatch({ type: 'SET_BASE_ZOOM', payload: 1 });
+      dispatch({ type: 'SET_ZOOM', payload: 1 });
+      dispatch({ type: 'CLEAR_HISTORY' });
+
+      return;
+    }
+
+    const image = new Image();
+    image.crossOrigin = "anonymous";
+
+    image.onload = () => {
+      // Calculate how to fit the image to the available container size
+      const availableWidth = state.containerSize.width - 100; // Account for padding
+      const availableHeight = state.containerSize.height - 200; // Account for tools and padding
+
+      // Calculate scale to fit image within available space
+      const scaleX = availableWidth / image.width;
+      const scaleY = availableHeight / image.height;
+      const fitScale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond original size
+
+      // Calculate fitted dimensions
+      const fittedWidth = image.width * fitScale;
+      const fittedHeight = image.height * fitScale;
+
+      // Canvas size is larger to allow for drawing around the image
+      const canvasWidth = Math.max(fittedWidth * 1.5, fittedWidth + 200);
+      const canvasHeight = Math.max(fittedHeight * 1.5, fittedHeight + 200);
+
+      // Center the image on the canvas
+      const imageX = (canvasWidth - fittedWidth) / 2;
+      const imageY = (canvasHeight - fittedHeight) / 2;
+
+      // Update canvas dimensions
+      const canvas = canvasRef.current;
+      if (canvas) {
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+      }
+
+      dispatch({ type: 'SET_DIMENSIONS', payload: { width: canvasWidth, height: canvasHeight } });
+      dispatch({
+        type: 'SET_IMAGE_POSITION', payload: {
+          x: imageX,
+          y: imageY,
+          width: fittedWidth,
+          height: fittedHeight
+        }
+      });
+      dispatch({ type: 'SET_BACKGROUND_IMAGE', payload: image });
+      dispatch({ type: 'SET_BASE_ZOOM', payload: fitScale });
+      dispatch({ type: 'SET_ZOOM', payload: 1 }); // 1 = 100% of fitted size
+      dispatch({ type: 'SET_PAN_OFFSET', payload: { x: 0, y: 0 } });
+      dispatch({ type: 'CLEAR_HISTORY' });
+    };
+
+    image.onerror = () => {
+      dispatch({ type: 'SET_IMAGE_ERROR', payload: "Failed to load image. Please try another one." });
+
+      // Fallback to empty canvas
+      const defaultWidth = Math.min(800, state.containerSize.width - 100);
+      const defaultHeight = Math.min(600, state.containerSize.height - 200);
+
+      dispatch({ type: 'SET_DIMENSIONS', payload: { width: defaultWidth, height: defaultHeight } });
+      dispatch({ type: 'SET_BACKGROUND_IMAGE', payload: null });
+      dispatch({ type: 'SET_BASE_ZOOM', payload: 1 });
+      dispatch({ type: 'SET_ZOOM', payload: 1 });
+      dispatch({ type: 'CLEAR_HISTORY' });
+    };
+
+    // Add cache busting
+    const cacheBuster = new Date().getTime();
+    const urlWithCacheBuster = imageUrl.includes('?')
+      ? `${imageUrl}&_t=${cacheBuster}`
+      : `${imageUrl}?_t=${cacheBuster}`;
+
+    image.src = urlWithCacheBuster;
+  }, [dispatch, canvasRef, state.containerSize]);
+
+  return { loadImage };
+}
+
 const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
   imageUrl,
   drawingMode,
@@ -28,553 +459,181 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
   generatingImage,
   storyContent
 }, ref) => {
-  console.log("Called ImageCanvas with props")
-  console.dir({ imageUrl, drawingMode, loading, adjusting, className, generatingImage, storyContent });
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [state, dispatch] = useReducer(canvasReducer, initialCanvasState);
 
-  // Define how much larger the drawing canvas should be relative to the image
-  const canvasImageProportionWidth = 1.5; // 50% larger width
-  const canvasImageProportionHeight = 1.5; // 50% larger height
+  const { redrawCanvas } = useCanvasOperations(canvasRef, state);
+  const { loadImage } = useImageLoader(dispatch, canvasRef, state);
+  const { startDrawing, draw, stopDrawing, saveToHistory } = useDrawing(
+    canvasRef,
+    state,
+    dispatch,
+    drawingMode
+  );
 
-  // Main visible canvas (shows image + drawings)
-  const mainCanvasRef = useRef<HTMLCanvasElement>(null);
-  // Hidden canvas (tracks only drawings for extraction)
-  const drawingOnlyCanvasRef = useRef<HTMLCanvasElement>(null);
-
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [backgroundImage, setBackgroundImage] = useState<HTMLImageElement | null>(null);
-  const [imageError, setImageError] = useState<string | null>(null);
-  const [canvasDimensions, setCanvasDimensions] = useState({ width: 600, height: 400 });
-  const [imagePosition, setImagePosition] = useState({ x: 0, y: 0, width: 0, height: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
-  const [history, setHistory] = useState<ImageData[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
-
-  // Track if user has made any drawings
-  const [hasUserDrawings, setHasUserDrawings] = useState(false);
-
-  // Helper function to get contexts safely
-  const getContexts = () => {
-    const mainCanvas = mainCanvasRef.current;
-    const drawingCanvas = drawingOnlyCanvasRef.current;
-
-    if (!mainCanvas || !drawingCanvas) {
-      console.warn("Canvas elements not available");
-      return null;
-    }
-
-    const mainCtx = mainCanvas.getContext('2d');
-    const drawingCtx = drawingCanvas.getContext('2d');
-
-    if (!mainCtx || !drawingCtx) {
-      console.warn("Canvas contexts not available");
-      return null;
-    }
-
-    return { mainCtx, drawingCtx, mainCanvas, drawingCanvas };
-  };
-
-  // Enhanced redrawCanvas that works for both plain canvas and image canvas
-  const redrawCanvas = () => {
-    const contexts = getContexts();
-    if (!contexts) return;
-
-    const { mainCtx, drawingCanvas } = contexts;
-
-    // Clear main canvas completely
-    mainCtx.clearRect(0, 0, canvasDimensions.width, canvasDimensions.height);
-
-    // If there's a background image, draw it first
-    if (backgroundImage) {
-      mainCtx.drawImage(backgroundImage, imagePosition.x, imagePosition.y);
-    } else {
-      // For plain canvas, fill with background color
-      mainCtx.fillStyle = "#f0f0f0";
-      mainCtx.fillRect(0, 0, canvasDimensions.width, canvasDimensions.height);
-    }
-
-    // Draw the drawings on top (this preserves transparency)
-    mainCtx.drawImage(drawingCanvas, 0, 0);
-  };
-
-  // Clear all drawings method
-  const clearAllDrawings = () => {
-    console.log("Clearing all drawings");
-    const contexts = getContexts();
-    if (!contexts) return;
-
-    const { mainCtx, drawingCtx } = contexts;
-
-    // Clear the drawing-only canvas completely
-    drawingCtx.clearRect(0, 0, canvasDimensions.width, canvasDimensions.height);
-
-    // Redraw the main canvas (background only)
-    mainCtx.clearRect(0, 0, canvasDimensions.width, canvasDimensions.height);
-    
-    if (backgroundImage) {
-      mainCtx.drawImage(backgroundImage, imagePosition.x, imagePosition.y);
-    } else {
-      mainCtx.fillStyle = "#f0f0f0";
-      mainCtx.fillRect(0, 0, canvasDimensions.width, canvasDimensions.height);
-    }
-
-    // Reset drawing state
-    setHasUserDrawings(false);
-    
-    // Clear history and reset to clean state
-    setHistory([]);
-    setHistoryIndex(-1);
-    
-    // Save the clean state as the new initial state
-    requestAnimationFrame(() => {
-      saveCanvasState();
-    });
-  };
-
-  // Initialize or reset canvas
-  const initializeCanvas = (imageUrl?: string | null) => {
-    console.log("Initializing canvas with image:", imageUrl);
-
-    const contexts = getContexts();
-    if (!contexts) return;
-
-    const { mainCtx, drawingCtx, mainCanvas, drawingCanvas } = contexts;
-
-    // Reset error state and drawing state
-    setImageError(null);
-    setHasUserDrawings(false);
-
-    // Default canvas dimensions
-    const defaultWidth = 600;
-    const defaultHeight = 400;
-
-    if (imageUrl && !generatingImage) {
-      console.log("Loading image:", imageUrl);
-      const image = new Image();
-      image.crossOrigin = "anonymous";
-
-      // Add cache-busting query parameter to force reload
-      const cacheBuster = new Date().getTime();
-      const urlWithCacheBuster = imageUrl.includes('?')
-        ? `${imageUrl}&_t=${cacheBuster}`
-        : `${imageUrl}?_t=${cacheBuster}`;
-
-      image.onload = () => {
-        console.log("Image loaded successfully, dimensions:", image.width, "x", image.height);
-
-        // Verify contexts are still available
-        const currentContexts = getContexts();
-        if (!currentContexts) {
-          console.error("Contexts lost during image load");
-          return;
-        }
-
-        const { mainCtx: currentMainCtx, drawingCtx: currentDrawingCtx, mainCanvas: currentMainCanvas, drawingCanvas: currentDrawingCanvas } = currentContexts;
-
-        // Calculate canvas dimensions (larger than image)
-        const drawingWidth = Math.round(image.width * canvasImageProportionWidth);
-        const drawingHeight = Math.round(image.height * canvasImageProportionHeight);
-
-        // Calculate image position (centered in larger canvas)
-        const imageX = Math.round((drawingWidth - image.width) / 2);
-        const imageY = Math.round((drawingHeight - image.height) / 2);
-
-        // Set up both canvases with same dimensions
-        currentMainCanvas.width = drawingWidth;
-        currentMainCanvas.height = drawingHeight;
-        currentDrawingCanvas.width = drawingWidth;
-        currentDrawingCanvas.height = drawingHeight;
-
-        // EXPLICITLY clear both canvases completely
-        currentMainCtx.clearRect(0, 0, drawingWidth, drawingHeight);
-        currentDrawingCtx.clearRect(0, 0, drawingWidth, drawingHeight);
-
-        // Set line styles
-        [currentMainCtx, currentDrawingCtx].forEach(ctx => {
-          ctx.lineWidth = drawingMode.thickness || 5;
-          ctx.lineCap = "round";
-          ctx.lineJoin = "round";
-          ctx.globalCompositeOperation = "source-over";
-        });
-
-        // Draw image on main canvas
-        currentMainCtx.drawImage(image, imageX, imageY);
-
-        // Update state
-        setBackgroundImage(image);
-        setCanvasDimensions({ width: drawingWidth, height: drawingHeight });
-        setImagePosition({ x: imageX, y: imageY, width: image.width, height: image.height });
-
-        // Clear and reset history for new image
-        setHistory([]);
-        setHistoryIndex(-1);
-        setHasUserDrawings(false);
-
-        // Save initial state to history
-        requestAnimationFrame(() => {
-          saveCanvasState();
-        });
-      };
-
-      image.onerror = (error) => {
-        console.error("Error loading image:", urlWithCacheBuster, error);
-        setImageError("Failed to load image. Please try another one.");
-
-        // Create a blank canvas with default dimensions
-        const currentContexts = getContexts();
-        if (currentContexts) {
-          const { mainCtx: currentMainCtx, drawingCtx: currentDrawingCtx, mainCanvas: currentMainCanvas, drawingCanvas: currentDrawingCanvas } = currentContexts;
-
-          const drawingWidth = Math.round(defaultWidth * canvasImageProportionWidth);
-          const drawingHeight = Math.round(defaultHeight * canvasImageProportionHeight);
-
-          currentMainCanvas.width = drawingWidth;
-          currentMainCanvas.height = drawingHeight;
-          currentDrawingCanvas.width = drawingWidth;
-          currentDrawingCanvas.height = drawingHeight;
-
-          // EXPLICITLY clear both canvases
-          currentMainCtx.clearRect(0, 0, drawingWidth, drawingHeight);
-          currentDrawingCtx.clearRect(0, 0, drawingWidth, drawingHeight);
-
-          currentMainCtx.fillStyle = "#f0f0f0";
-          currentMainCtx.fillRect(0, 0, drawingWidth, drawingHeight);
-          currentMainCtx.fillStyle = "#666";
-          currentMainCtx.font = "16px sans-serif";
-          currentMainCtx.fillText("Image could not be loaded", 20, 30);
-
-          setCanvasDimensions({ width: drawingWidth, height: drawingHeight });
-          setBackgroundImage(null);
-          setHasUserDrawings(false);
-
-          // Clear and reset history
-          setHistory([]);
-          setHistoryIndex(-1);
-
-          // Save initial state to history
-          requestAnimationFrame(() => {
-            saveCanvasState();
-          });
-        }
-      };
-
-      // Use the URL with cache buster
-      image.src = urlWithCacheBuster;
-    } else if (!generatingImage) {
-      // Create empty canvas when no image
-      console.log("Creating empty canvas");
-      const drawingWidth = Math.round(defaultWidth * canvasImageProportionWidth);
-      const drawingHeight = Math.round(defaultHeight * canvasImageProportionHeight);
-
-      mainCanvas.width = drawingWidth;
-      mainCanvas.height = drawingHeight;
-      drawingCanvas.width = drawingWidth;
-      drawingCanvas.height = drawingHeight;
-
-      // EXPLICITLY clear both canvases completely
-      mainCtx.clearRect(0, 0, drawingWidth, drawingHeight);
-      drawingCtx.clearRect(0, 0, drawingWidth, drawingHeight);
-
-      mainCtx.fillStyle = "#f0f0f0";
-      mainCtx.fillRect(0, 0, drawingWidth, drawingHeight);
-
-      // Set line styles
-      [mainCtx, drawingCtx].forEach(ctx => {
-        ctx.lineWidth = drawingMode.thickness || 5;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-        ctx.globalCompositeOperation = "source-over";
-      });
-
-      setCanvasDimensions({ width: drawingWidth, height: drawingHeight });
-      setBackgroundImage(null);
-
-      // Clear and reset history
-      setHistory([]);
-      setHistoryIndex(-1);
-      setHasUserDrawings(false);
-
-      // Save initial state to history
-      requestAnimationFrame(() => {
-        saveCanvasState();
-      });
-    }
-  };
-
-  // Initialize canvas when component mounts or when imageUrl changes
+  // Monitor container size changes
   useEffect(() => {
-    console.log("Main initialization useEffect", { imageUrl, generatingImage });
-    initializeCanvas(imageUrl);
-  }, [imageUrl, generatingImage]);
+    const updateContainerSize = () => {
+      if (containerRef.current) {
+        const { width, height } = containerRef.current.getBoundingClientRect();
+        dispatch({
+          type: 'SET_CONTAINER_SIZE',
+          payload: { width: width || 800, height: height || 600 }
+        });
+      }
+    };
 
-  // Handle drawing mode changes
+    updateContainerSize();
+
+    const resizeObserver = new ResizeObserver(updateContainerSize);
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  // Initialize canvas when image URL changes
   useEffect(() => {
-    const contexts = getContexts();
-    if (contexts) {
-      const { mainCtx, drawingCtx } = contexts;
-      [mainCtx, drawingCtx].forEach(ctx => {
+    if (!generatingImage) {
+      loadImage(imageUrl);
+    }
+  }, [imageUrl, generatingImage, loadImage, state.containerSize]);
+
+  // CRITICAL FIX: Update canvas context when drawing mode changes
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
         ctx.lineWidth = drawingMode.thickness || 5;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
-      });
-    }
-  }, [drawingMode]);
+        // CRITICAL FIX: Set the stroke color here
+        ctx.strokeStyle = drawingMode.color || "#000000";
 
-  // History management functions
-  const saveCanvasState = () => {
-    const contexts = getContexts();
-    if (!contexts) return;
-
-    const { drawingCtx } = contexts;
-    const imageData = drawingCtx.getImageData(0, 0, canvasDimensions.width, canvasDimensions.height);
-
-    // Remove any history after current index (when we make a new action after undoing)
-    const newHistory = [...history.slice(0, historyIndex + 1), imageData];
-
-    // Limit history to prevent memory issues (keep last 50 states)
-    if (newHistory.length > 50) {
-      newHistory.shift();
-      setHistory(newHistory);
-      setHistoryIndex(newHistory.length - 1);
-    } else {
-      setHistory(newHistory);
-      setHistoryIndex(newHistory.length - 1);
-    }
-  };
-
-  const handleUndo = () => {
-    if (historyIndex > 0) {
-      const contexts = getContexts();
-      if (!contexts) return;
-
-      const { drawingCtx } = contexts;
-      const newIndex = historyIndex - 1;
-      const imageData = history[newIndex];
-
-      // Restore the canvas state
-      drawingCtx.putImageData(imageData, 0, 0);
-      setHistoryIndex(newIndex);
-
-      // Check if we're back to the initial state (no drawings)
-      // Index 0 is always the clean initial state
-      setHasUserDrawings(newIndex > 0);
-
-      // Redraw the main canvas
-      redrawCanvas();
-    }
-  };
-
-  const handleRedo = () => {
-    if (historyIndex < history.length - 1) {
-      const contexts = getContexts();
-      if (!contexts) return;
-
-      const { drawingCtx } = contexts;
-      const newIndex = historyIndex + 1;
-      const imageData = history[newIndex];
-
-      // Restore the canvas state
-      drawingCtx.putImageData(imageData, 0, 0);
-      setHistoryIndex(newIndex);
-
-      // Update hasUserDrawings based on whether we're at the initial state
-      setHasUserDrawings(newIndex > 0);
-
-      // Redraw the main canvas
-      redrawCanvas();
-    }
-  };
-
-  // Zoom control functions
-  const handleZoomIn = () => {
-    setZoom(prev => Math.min(3, prev + 0.25));
-  };
-
-  const handleZoomOut = () => {
-    setZoom(prev => Math.max(0.25, prev - 0.25));
-  };
-
-  const handleResetZoom = () => {
-    setZoom(1);
-    setPanOffset({ x: 0, y: 0 });
-  };
-
-  // Drawing handlers
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (drawingMode.mode === "none") return;
-
-    const contexts = getContexts();
-    if (!contexts) return;
-
-    const { mainCtx, drawingCtx, mainCanvas } = contexts;
-
-    const rect = mainCanvas.getBoundingClientRect();
-    const scaleX = mainCanvas.width / rect.width;
-    const scaleY = mainCanvas.height / rect.height;
-    const x = (e.clientX - rect.left) * scaleX;
-    const y = (e.clientY - rect.top) * scaleY;
-
-    // Set up drawing styles
-    if (drawingMode.mode === "erase") {
-      // For erasing, only set up the drawing-only canvas to erase
-      drawingCtx.beginPath();
-      drawingCtx.moveTo(x, y);
-      drawingCtx.lineWidth = drawingMode.thickness || 15;
-      drawingCtx.lineCap = "round";
-      drawingCtx.lineJoin = "round";
-      drawingCtx.globalCompositeOperation = "destination-out";
-    } else {
-      // For normal drawing, set up both contexts
-      [mainCtx, drawingCtx].forEach(ctx => {
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineWidth = drawingMode.thickness || 5;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-        ctx.globalCompositeOperation = "source-over";
-        ctx.strokeStyle = drawingMode.color;
-      });
-    }
-
-    setIsDrawing(true);
-    // Mark that user has started drawing
-    setHasUserDrawings(true);
-  };
-
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || drawingMode.mode === "none") return;
-
-    const contexts = getContexts();
-    if (!contexts) return;
-
-    const { mainCtx, drawingCtx, mainCanvas } = contexts;
-
-    const rect = mainCanvas.getBoundingClientRect();
-    const scaleX = mainCanvas.width / rect.width;
-    const scaleY = mainCanvas.height / rect.height;
-    const x = (e.clientX - rect.left) * scaleX;
-    const y = (e.clientY - rect.top) * scaleY;
-
-    // Draw on the drawing-only canvas first
-    drawingCtx.lineTo(x, y);
-    drawingCtx.stroke();
-
-    // For erase mode, we need to redraw the entire main canvas to show the background through erased areas
-    if (drawingMode.mode === "erase") {
-      redrawCanvas();
-    } else {
-      // For normal drawing, just draw directly on the main canvas
-      mainCtx.lineTo(x, y);
-      mainCtx.stroke();
-    }
-  };
-
-  const stopDrawing = () => {
-    if (isDrawing) {
-      setIsDrawing(false);
-
-      const contexts = getContexts();
-      if (contexts) {
-        const { drawingCtx } = contexts;
-        // Reset composite operation back to normal
-        drawingCtx.globalCompositeOperation = "source-over";
-
-        // If we were erasing, do a final redraw to ensure everything is properly displayed
-        if (drawingMode.mode === "erase") {
-          redrawCanvas();
-        }
-
-        // Save the state AFTER completing the drawing action
-        // This ensures undo will remove this complete drawing action
-        requestAnimationFrame(() => {
-          saveCanvasState();
+        console.log('Canvas context updated with new drawing mode:', {
+          color: drawingMode.color,
+          thickness: drawingMode.thickness,
+          mode: drawingMode.mode
         });
       }
     }
-  };
+  }, [drawingMode]);
 
-  // Set cursor based on drawing mode
+  // Redraw canvas when background image or dimensions change
+  useEffect(() => {
+    redrawCanvas();
+
+    // Save initial state to history if this is a fresh canvas
+    if (state.history.length === 0) {
+      setTimeout(() => saveToHistory(), 0);
+    }
+  }, [state.backgroundImage, state.dimensions, redrawCanvas, saveToHistory, state.history.length]);
+
+  // Restore canvas state when history changes (undo/redo)
+  useEffect(() => {
+    if (state.history.length > 0 && state.historyIndex >= 0) {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          const imageData = state.history[state.historyIndex];
+          ctx.putImageData(imageData, 0, 0);
+        }
+      }
+    }
+  }, [state.historyIndex]);
+
+  // History operations
+  const handleUndo = useCallback(() => {
+    dispatch({ type: 'UNDO' });
+  }, []);
+
+  const handleRedo = useCallback(() => {
+    dispatch({ type: 'REDO' });
+  }, []);
+
+  // Clear all drawings
+  const clearAllDrawings = useCallback(() => {
+    redrawCanvas();
+    dispatch({ type: 'CLEAR_HISTORY' });
+    dispatch({ type: 'SET_USER_DRAWINGS', payload: false });
+    setTimeout(() => saveToHistory(), 0);
+  }, [redrawCanvas, saveToHistory]);
+
+  // Zoom controls with proper centering
+  const handleZoomIn = useCallback(() => {
+    const newZoom = Math.min(4, state.zoom + 0.25);
+    dispatch({ type: 'SET_ZOOM', payload: newZoom });
+  }, [state.zoom]);
+
+  const handleZoomOut = useCallback(() => {
+    const newZoom = Math.max(0.5, state.zoom - 0.25);
+    dispatch({ type: 'SET_ZOOM', payload: newZoom });
+  }, [state.zoom]);
+
+  const handleResetZoom = useCallback(() => {
+    dispatch({ type: 'SET_ZOOM', payload: 1 });
+    dispatch({ type: 'SET_PAN_OFFSET', payload: { x: 0, y: 0 } });
+  }, []);
+
+  // Generate story callback
+  const onGenerateStory = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const dataUrl = canvas.toDataURL();
+      onImageEdit(dataUrl, state.hasUserDrawings, !!state.backgroundImage);
+    }
+  }, [onImageEdit, state.hasUserDrawings, state.backgroundImage]);
+
+  // Cursor style
   const getCursor = () => {
     switch (drawingMode.mode) {
-      case "add":
-        return "crosshair";
-      case "remove":
+      case "draw":
         return "crosshair";
       case "erase":
-        return "crosshair";
+        return "grab";
       default:
         return "default";
     }
   };
 
-  // Helper function to generate dataURL with ONLY the drawings (no background)
-  const onGenerateStory = () => {
-    const contexts = getContexts();
-    if (contexts) {
-      const { drawingCanvas } = contexts;
-      // This will only contain the user's drawings on a transparent background
-      const dataUrl = drawingCanvas.toDataURL();
-      const hasBackgroundImage = !!backgroundImage;
-      onImageEdit(dataUrl, hasUserDrawings, hasBackgroundImage);
-    }
-  };
-
-  // Expose methods to parent component
+  // Expose methods to parent
   useImperativeHandle(ref, () => ({
     onGenerateStory,
-    hasUserDrawings,
-    hasBackgroundImage: !!backgroundImage,
+    hasUserDrawings: state.hasUserDrawings,
+    hasBackgroundImage: !!state.backgroundImage,
     clearAllDrawings
   }));
-
   return (
-    <div className={`flex flex-col h-full ${className} relative`}>
-      {/* Loading overlay for generating images */}
-      {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 z-10">
-          <div className="flex items-center">
-            <LoadingSpinner size="lg" className="text-white" />
-            <span className="ml-3 text-white">Generating image...</span>
-          </div>
-        </div>
-      )}
-
-      {/* Adjusting overlay */}
-      {adjusting && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 z-10">
-          <div className="flex items-center">
-            <LoadingSpinner size="lg" className="text-white" />
-            <span className="ml-3 text-white">Updating story...</span>
-          </div>
-        </div>
-      )}
-
+    <div ref={containerRef} className={`flex flex-col h-full ${className} relative`}>
       {/* Canvas container */}
       <div className="flex-1 min-h-0 overflow-auto p-0">
-        <div 
+        <div
           className="relative"
           style={{
-            // Calculate the visual size needed after scaling, plus padding for comfortable scrolling
-            width: mainCanvasRef.current ? `${mainCanvasRef.current.width * zoom + 200}px` : 'auto',
-            height: mainCanvasRef.current ? `${mainCanvasRef.current.height * zoom + 200}px` : 'auto',
-            // Ensure minimum size for small images/low zoom
+            width: `${state.dimensions.width * state.zoom + 200}px`,
+            height: `${state.dimensions.height * state.zoom + 200}px`,
             minWidth: '100%',
             minHeight: '100%'
           }}
         >
-          {/* Center the canvas within the padded container */}
-          <div 
+          <div
             className="absolute flex items-center justify-center"
             style={{
-              top: '100px', // Half of the padding
-              left: '100px', // Half of the padding  
+              top: '100px',
+              left: '100px',
               right: '100px',
               bottom: '100px'
             }}
           >
             <div className="relative inline-block">
               <canvas
-                ref={mainCanvasRef}
+                ref={canvasRef}
+                width={state.dimensions.width}
+                height={state.dimensions.height}
                 onMouseDown={startDrawing}
                 onMouseMove={draw}
                 onMouseUp={stopDrawing}
@@ -583,21 +642,15 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
                   cursor: getCursor(),
                   border: "1px solid #ddd",
                   display: "block",
-                  transform: `scale(${zoom})`,
-                  transformOrigin: "center"
+                  transform: `scale(${state.zoom})`,
+                  transformOrigin: "center",
+                  boxShadow: "0 4px 8px rgba(0,0,0,0.1)"
                 }}
               />
-                           
-              <canvas
-                ref={drawingOnlyCanvasRef}
-                style={{
-                  display: "none"
-                }}
-              />
-                           
-              {imageError && (
+
+              {state.imageError && (
                 <div className="absolute inset-0 flex items-center justify-center bg-red-100 bg-opacity-80 text-red-600 p-4 text-center">
-                  {imageError}
+                  {state.imageError}
                 </div>
               )}
             </div>
@@ -605,34 +658,38 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
         </div>
       </div>
 
-      {/* Drawing Tools - sticky at bottom */}
+      {/* Drawing Tools */}
       <div className="sticky bottom-0 bg-white border-t shadow-lg z-30">
         <DrawingTools
           currentMode={drawingMode}
           setMode={setDrawingMode}
-          onAdjustStory={() => {
-            const contexts = getContexts();
-            if (contexts) {
-              const { drawingCanvas } = contexts;
-              // This sends ONLY the drawings, not the background image
-              const dataUrl = drawingCanvas.toDataURL();
-              const hasBackgroundImage = !!backgroundImage;
-              onImageEdit(dataUrl, hasUserDrawings, hasBackgroundImage);
-            }
-          }}
+          onAdjustStory={onGenerateStory}
           adjusting={adjusting}
           hasImage={true}
           showGenerateButton={false}
-          zoom={zoom}
+          zoom={state.zoom}
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
           onResetZoom={handleResetZoom}
           onUndo={handleUndo}
           onRedo={handleRedo}
-          canUndo={historyIndex > 0}
-          canRedo={historyIndex < history.length - 1}
+          canUndo={state.historyIndex > 0}
+          canRedo={state.historyIndex < state.history.length - 1}
+          disabled={loading || adjusting}
         />
       </div>
+
+      {/* Loading overlays - positioned to cover entire component */}
+      {(loading || adjusting) && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 z-40">
+          <div className="flex items-center">
+            <LoadingSpinner size="lg" className="text-white" />
+            <span className="ml-3 text-white">
+              {loading ? "Generating image..." : "Updating story..."}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 });
