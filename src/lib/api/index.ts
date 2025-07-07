@@ -11,6 +11,7 @@ export type { CreateNewStoryRequest } from './models/CreateNewStoryRequest';
 export type { CreateUserRequest } from './models/CreateUserRequest';
 export type { DeleteStoryRequest } from './models/DeleteStoryRequest';
 export type { DeleteUserRequest } from './models/DeleteUserRequest';
+export type { GenerateAudioRequest } from './models/GenerateAudioRequest';
 export type { HTTPValidationError } from './models/HTTPValidationError';
 export type { ImageResponse } from './models/ImageResponse';
 export { NoChangeOperation } from './models/NoChangeOperation';

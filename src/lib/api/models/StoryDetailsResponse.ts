@@ -10,5 +10,6 @@ export type StoryDetailsResponse = {
     storyText: string;
     state: StoryState;
     storyImages: Array<ImageResponse>;
+    audioUrl?: (string | null);
 };
 

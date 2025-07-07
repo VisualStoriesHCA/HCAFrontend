@@ -55,6 +55,32 @@ export class DefaultService {
         });
     }
     /**
+     * Get Audio
+     * @param userId
+     * @param storyId
+     * @param audioId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static getAudioAudioUserIdStoryIdAudioIdGet(
+        userId: string,
+        storyId: string,
+        audioId: string,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/audio/{user_id}/{story_id}/{audio_id}',
+            path: {
+                'user_id': userId,
+                'story_id': storyId,
+                'audio_id': audioId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
      * Get Image
      * @param imageId
      * @returns any Successful Response

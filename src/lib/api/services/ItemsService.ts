@@ -6,6 +6,7 @@ import type { CreateNewStoryRequest } from '../models/CreateNewStoryRequest';
 import type { CreateUserRequest } from '../models/CreateUserRequest';
 import type { DeleteStoryRequest } from '../models/DeleteStoryRequest';
 import type { DeleteUserRequest } from '../models/DeleteUserRequest';
+import type { GenerateAudioRequest } from '../models/GenerateAudioRequest';
 import type { SetStoryNameRequest } from '../models/SetStoryNameRequest';
 import type { StoryBasicInfoResponse } from '../models/StoryBasicInfoResponse';
 import type { StoryDetailsResponse } from '../models/StoryDetailsResponse';
@@ -260,6 +261,26 @@ export class ItemsService {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/items/uploadImage',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                404: `Not found`,
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Generate Audio
+     * @param requestBody
+     * @returns StoryDetailsResponse Successful Response
+     * @throws ApiError
+     */
+    public static generateAudio(
+        requestBody: GenerateAudioRequest,
+    ): CancelablePromise<StoryDetailsResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/items/generateAudio',
             body: requestBody,
             mediaType: 'application/json',
             errors: {

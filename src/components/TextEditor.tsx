@@ -1,9 +1,11 @@
 import DOMPurify from "dompurify";
 import { useRef, useEffect, useState } from "react";
 import LoadingSpinner from "./LoadingSpinner";
+import AudioPlayer from "./AudioPlayer";
 
 interface TextEditorProps {
   content: string;
+  audioUrl?: string;
   onContentChange: (content: string) => void;
   onGenerateImage: () => void;
   generating: boolean;
@@ -20,6 +22,7 @@ const removeMarkTags = (html: string): string => {
 
 const TextEditor = ({
   content,
+  audioUrl,
   onContentChange,
   generating,
   adjusting,
@@ -156,6 +159,7 @@ const TextEditor = ({
           </div>
         </div>
       )}
+      
       <div
         ref={editorRef}
         contentEditable={!generating && !adjusting}
@@ -165,6 +169,15 @@ const TextEditor = ({
         placeholder="Start writing your story here..."
         suppressContentEditableWarning={true}
       />
+      
+      {/* Audio Player - only show if audioUrl exists */}
+      {audioUrl && (
+        <div className="sticky bottom-0 bg-white border-t shadow-lg z-30">
+          <div className="p-3 bg-gray-50">
+            <AudioPlayer audioUrl={audioUrl} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -337,6 +337,33 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /items/generateAudio:
+    post:
+      tags:
+        - items
+      summary: Generate Audio
+      operationId: generateAudio
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateAudioRequest'
+        required: true
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoryDetailsResponse'
+        "404":
+          description: Not found
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /:
     get:
       summary: Root
@@ -380,6 +407,41 @@ paths:
           schema:
             type: string
             title: Image Id
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /audio/{user_id}/{story_id}/{audio_id}:
+    get:
+      summary: Get Audio
+      operationId: get_audio_audio__user_id___story_id___audio_id__get
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: User Id
+        - name: story_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Story Id
+        - name: audio_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Audio Id
       responses:
         "200":
           description: Successful Response
@@ -465,6 +527,23 @@ components:
       required:
         - userId
       title: DeleteUserRequest
+    GenerateAudioRequest:
+      properties:
+        userId:
+          type: string
+          title: Userid
+        storyId:
+          type: string
+          title: Storyid
+        text:
+          type: string
+          title: Text
+      type: object
+      required:
+        - userId
+        - storyId
+        - text
+      title: GenerateAudioRequest
     HTTPValidationError:
       properties:
         detail:
@@ -621,6 +700,11 @@ components:
             $ref: '#/components/schemas/ImageResponse'
           type: array
           title: Storyimages
+        audioUrl:
+          anyOf:
+            - type: string
+            - type: "null"
+          title: Audiourl
       type: object
       required:
         - storyId
