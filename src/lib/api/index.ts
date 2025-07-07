@@ -7,6 +7,9 @@ export { CancelablePromise, CancelError } from './core/CancelablePromise';
 export { OpenAPI } from './core/OpenAPI';
 export type { OpenAPIConfig } from './core/OpenAPI';
 
+export type { AchievementReward } from './models/AchievementReward';
+export { AchievementState } from './models/AchievementState';
+export { AchievementType } from './models/AchievementType';
 export type { CreateNewStoryRequest } from './models/CreateNewStoryRequest';
 export type { CreateUserRequest } from './models/CreateUserRequest';
 export type { DeleteStoryRequest } from './models/DeleteStoryRequest';
@@ -23,6 +26,8 @@ export { StoryState } from './models/StoryState';
 export type { UpdateImagesByTextRequest } from './models/UpdateImagesByTextRequest';
 export type { UpdateTextByImagesRequest } from './models/UpdateTextByImagesRequest';
 export type { UploadImageRequest } from './models/UploadImageRequest';
+export type { UserAchievement } from './models/UserAchievement';
+export type { UserAchievementsResponse } from './models/UserAchievementsResponse';
 export type { UserResponse } from './models/UserResponse';
 export type { UserStoriesResponse } from './models/UserStoriesResponse';
 export type { ValidationError } from './models/ValidationError';

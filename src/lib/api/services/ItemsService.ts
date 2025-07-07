@@ -12,6 +12,7 @@ import type { StoryDetailsResponse } from '../models/StoryDetailsResponse';
 import type { UpdateImagesByTextRequest } from '../models/UpdateImagesByTextRequest';
 import type { UpdateTextByImagesRequest } from '../models/UpdateTextByImagesRequest';
 import type { UploadImageRequest } from '../models/UploadImageRequest';
+import type { UserAchievementsResponse } from '../models/UserAchievementsResponse';
 import type { UserResponse } from '../models/UserResponse';
 import type { UserStoriesResponse } from '../models/UserStoriesResponse';
 import type { CancelablePromise } from '../core/CancelablePromise';
@@ -201,6 +202,31 @@ export class ItemsService {
             query: {
                 'userId': userId,
                 'storyId': storyId,
+            },
+            errors: {
+                404: `Not found`,
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get User Achievements
+     * Get all achievements and user progress for gamification features.
+     *
+     * This is a placeholder implementation that returns static example data.
+     * TODO: Implement actual database queries when Achievement and UserAchievement tables are created.
+     * @param userId
+     * @returns UserAchievementsResponse Successful Response
+     * @throws ApiError
+     */
+    public static getUserAchievements(
+        userId: string,
+    ): CancelablePromise<UserAchievementsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/items/getUserAchievements',
+            query: {
+                'userId': userId,
             },
             errors: {
                 404: `Not found`,

@@ -1,4 +1,4 @@
-import { User, Menu, LogOut, Settings, UserCircle } from "lucide-react";
+import { User, Menu, LogOut, Settings, UserCircle, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -23,6 +23,7 @@ import {
 import { useUserContext } from "@/App";
 import { useState, useEffect } from "react";
 import { ItemsService } from "@/lib/api";
+import Achievements from "@/components/Achievements";
 
 interface NavbarProps {
   onToggleSidebar: () => void;
@@ -32,6 +33,7 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
   const { userInformation, setUserInformation } = useUserContext();
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [showAchievementsDialog, setShowAchievementsDialog] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const onLogout = () => {
@@ -53,11 +55,19 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
     }, 100);
   };
 
+  const onAchievements = () => {
+    setDropdownOpen(false);
+    setTimeout(() => {
+      setShowAchievementsDialog(true);
+    }, 100);
+  };
+
   // Clean up any potential stuck states
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setShowProfileDialog(false);
+        setShowAchievementsDialog(false);
         setDropdownOpen(false);
       }
     };
@@ -75,6 +85,11 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
     setShowSettingsDialog(open);
     handleGenericDialogClose(open);
   }
+
+  const handleAchievementsDialogClose = (open: boolean) => {
+    setShowAchievementsDialog(open);
+    handleGenericDialogClose(open);
+  };
 
   // Handle dialog close with additional cleanup
   const handleGenericDialogClose = (open: boolean) => {
@@ -126,6 +141,10 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
                 <UserCircle className="mr-2 h-4 w-4" />
                 Profile
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={onAchievements}>
+                <Trophy className="mr-2 h-4 w-4" />
+                Achievements
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={onSettings}>
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
@@ -163,6 +182,18 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
               </div>
             </CardContent>
           </Card>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showAchievementsDialog} onOpenChange={handleAchievementsDialogClose}>
+        <DialogContent className="sm:max-w-4xl max-h-[80vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Trophy className="h-5 w-5" />
+              Achievements
+            </DialogTitle>
+          </DialogHeader>
+          <Achievements userId={userInformation?.userId} />
         </DialogContent>
       </Dialog>
 

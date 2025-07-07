@@ -256,6 +256,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /items/getUserAchievements:
+    get:
+      tags:
+        - items
+      summary: Get User Achievements
+      description: |-
+        Get all achievements and user progress for gamification features.
+
+        This is a placeholder implementation that returns static example data.
+        TODO: Implement actual database queries when Achievement and UserAchievement tables are created.
+      operationId: getUserAchievements
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Userid
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserAchievementsResponse'
+        "404":
+          description: Not found
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /items/updateImagesByText:
     post:
       tags:
@@ -417,6 +450,41 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
 components:
   schemas:
+    AchievementReward:
+      properties:
+        points:
+          anyOf:
+            - type: integer
+            - type: "null"
+          title: Points
+        badge:
+          anyOf:
+            - type: string
+            - type: "null"
+          title: Badge
+        unlocks:
+          anyOf:
+            - items:
+                type: string
+              type: array
+            - type: "null"
+          title: Unlocks
+      type: object
+      title: AchievementReward
+    AchievementState:
+      type: string
+      enum:
+        - locked
+        - in_progress
+        - completed
+      title: AchievementState
+    AchievementType:
+      type: string
+      enum:
+        - progress
+        - milestone
+        - binary
+      title: AchievementType
     CreateNewStoryRequest:
       properties:
         userId:
@@ -692,6 +760,74 @@ components:
         - storyId
         - imageFile
       title: UploadImageRequest
+    UserAchievement:
+      properties:
+        achievementId:
+          type: integer
+          title: Achievementid
+        title:
+          type: string
+          title: Title
+        description:
+          type: string
+          title: Description
+        category:
+          type: string
+          title: Category
+        type:
+          $ref: '#/components/schemas/AchievementType'
+        imageUrl:
+          type: string
+          title: Imageurl
+        state:
+          $ref: '#/components/schemas/AchievementState'
+        currentValue:
+          type: integer
+          title: Currentvalue
+        targetValue:
+          type: integer
+          title: Targetvalue
+        unit:
+          type: string
+          title: Unit
+        completedAt:
+          anyOf:
+            - type: string
+            - type: "null"
+          title: Completedat
+        reward:
+          anyOf:
+            - $ref: '#/components/schemas/AchievementReward'
+            - type: "null"
+        unlockCondition:
+          anyOf:
+            - type: string
+            - type: "null"
+          title: Unlockcondition
+      type: object
+      required:
+        - achievementId
+        - title
+        - description
+        - category
+        - type
+        - imageUrl
+        - state
+        - currentValue
+        - targetValue
+        - unit
+      title: UserAchievement
+    UserAchievementsResponse:
+      properties:
+        achievements:
+          items:
+            $ref: '#/components/schemas/UserAchievement'
+          type: array
+          title: Achievements
+      type: object
+      required:
+        - achievements
+      title: UserAchievementsResponse
     UserResponse:
       properties:
         userId:
