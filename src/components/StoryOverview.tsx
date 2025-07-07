@@ -359,6 +359,13 @@ export default function StoryOverview({ storyId, onStoryDelete }: { storyId: str
             return;
         }
 
+        // Validate specific image formats
+        const supportedFormats = ['image/jpeg', 'image/jpg', 'image/png'];
+        if (!supportedFormats.includes(file.type)) {
+            toast.error("Only PNG, JPEG, and JPG image formats are supported");
+            return;
+        }
+
         // Validate file size (e.g., max 10MB)
         if (file.size > 10 * 1024 * 1024) {
             toast.error("File size must be less than 10MB");
