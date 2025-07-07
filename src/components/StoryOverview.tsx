@@ -11,13 +11,14 @@ import {
     StoryState
 } from "@/lib/api";
 import { useUserContext } from "@/App";
-import { FileText, Image, PlusCircle, Upload } from "lucide-react";
+import { FileText, Image, PlusCircle, Upload, Volume2 } from "lucide-react";
 import { useStoryPolling } from "@/hooks/useStoryPolling";
 import { useAsyncOperation } from "@/hooks/useAsyncOperation";
 import { determineImageOperation, validateImageFile } from "@/utils/imageOperations";
 
 interface LoadingStates {
     generatingImage: boolean;
+    generatingAudio: boolean;
     adjustingStory: boolean;
     uploadingSketch: boolean;
     isPolling: boolean;
@@ -36,6 +37,7 @@ export default function StoryOverview({
     const [loading, setLoading] = useState(true);
     const [loadingStates, setLoadingStates] = useState<LoadingStates>({
         generatingImage: false,
+        generatingAudio: false,
         adjustingStory: false,
         uploadingSketch: false,
         isPolling: false,
@@ -62,6 +64,7 @@ export default function StoryOverview({
     const resetAllLoadingStates = () => {
         setLoadingStates({
             generatingImage: false,
+            generatingAudio: false,
             adjustingStory: false,
             uploadingSketch: false,
             isPolling: false,
@@ -171,6 +174,34 @@ export default function StoryOverview({
     useEffect(() => stopPolling, []);
 
     // Action handlers
+    const handleGenerateAudio = async () => {
+        if (!story?.storyText.trim()) {
+            toast.error("Please write a story first");
+            return;
+        }
+
+        updateLoadingState('generatingAudio', true);
+
+        await executeOperation({
+            operation: () => ItemsService.generateAudio({
+                userId: userInformation.userId,
+                storyId: storyId,
+                text: story.storyText
+            }),
+            onSuccess: (newStory) => {
+                setStory(newStory);
+                startPollingIfNeeded(newStory);
+            },
+            onError: () => {},
+            errorMessage: "Failed to generate audio. Please try again.",
+            loadingKey: "generate audio"
+        }).finally(() => {
+            if (currentStoryIdRef.current === storyId) {
+                updateLoadingState('generatingAudio', false);
+            }
+        });
+    };
+
     const handleGenerateImage = async () => {
         if (!story?.storyText.trim()) {
             toast.error("Please write a story first");
@@ -332,7 +363,13 @@ export default function StoryOverview({
                 <CardHeader className="p-4 border-b">
                     <div className="flex items-center justify-between">
                         <h2 className="font-semibold">Story Editor</h2>
-                        <Button disabled variant="outline">Generate Image</Button>
+                        <div className="flex gap-2">
+                            <Button disabled variant="outline">
+                                <Volume2 className="h-4 w-4 mr-2" />
+                                Generate Audio
+                            </Button>
+                            <Button disabled variant="outline">Generate Image</Button>
+                        </div>
                     </div>
                 </CardHeader>
                 <CardContent className="flex-1 flex items-center justify-center p-8">
@@ -385,16 +422,27 @@ export default function StoryOverview({
             <div className="flex flex-col w-1/2 border-r">
                 <div className="p-4 border-b flex items-center justify-between">
                     <h2 className="font-semibold">Story Editor</h2>
-                    <Button
-                        onClick={handleGenerateImage}
-                        disabled={loadingStates.generatingImage || !story?.storyText?.trim() || isAnyOperationInProgress}
-                        variant="default"
-                    >
-                        {loadingStates.generatingImage || isStoryPending ? "Generating..." : "Generate Image"}
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button
+                            onClick={handleGenerateAudio}
+                            disabled={loadingStates.generatingAudio || !story?.storyText?.trim() || isAnyOperationInProgress}
+                            variant="outline"
+                        >
+                            <Volume2 className="h-4 w-4 mr-2" />
+                            {loadingStates.generatingAudio || isStoryPending ? "Generating..." : "Generate Audio"}
+                        </Button>
+                        <Button
+                            onClick={handleGenerateImage}
+                            disabled={loadingStates.generatingImage || !story?.storyText?.trim() || isAnyOperationInProgress}
+                            variant="default"
+                        >
+                            {loadingStates.generatingImage || isStoryPending ? "Generating..." : "Generate Image"}
+                        </Button>
+                    </div>
                 </div>
                 <TextEditor
                     content={story?.storyText}
+                    audioUrl={story?.audioUrl}
                     onContentChange={setStoryContent}
                     onGenerateImage={handleGenerateImage}
                     generating={loadingStates.generatingImage || isStoryPending}

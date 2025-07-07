@@ -256,39 +256,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-  /items/getUserAchievements:
-    get:
-      tags:
-        - items
-      summary: Get User Achievements
-      description: |-
-        Get all achievements and user progress for gamification features.
-
-        This is a placeholder implementation that returns static example data.
-        TODO: Implement actual database queries when Achievement and UserAchievement tables are created.
-      operationId: getUserAchievements
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: string
-            title: Userid
-      responses:
-        "200":
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserAchievementsResponse'
-        "404":
-          description: Not found
-        "422":
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
   /items/updateImagesByText:
     post:
       tags:
@@ -370,6 +337,33 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /items/generateAudio:
+    post:
+      tags:
+        - items
+      summary: Generate Audio
+      operationId: generateAudio
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateAudioRequest'
+        required: true
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoryDetailsResponse'
+        "404":
+          description: Not found
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /:
     get:
       summary: Root
@@ -425,6 +419,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /audio/{user_id}/{story_id}/{audio_id}:
+    get:
+      summary: Get Audio
+      operationId: get_audio_audio__user_id___story_id___audio_id__get
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: User Id
+        - name: story_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Story Id
+        - name: audio_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Audio Id
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /assets/logos/{image_id}:
     get:
       summary: Get Image
@@ -450,41 +479,6 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
 components:
   schemas:
-    AchievementReward:
-      properties:
-        points:
-          anyOf:
-            - type: integer
-            - type: "null"
-          title: Points
-        badge:
-          anyOf:
-            - type: string
-            - type: "null"
-          title: Badge
-        unlocks:
-          anyOf:
-            - items:
-                type: string
-              type: array
-            - type: "null"
-          title: Unlocks
-      type: object
-      title: AchievementReward
-    AchievementState:
-      type: string
-      enum:
-        - locked
-        - in_progress
-        - completed
-      title: AchievementState
-    AchievementType:
-      type: string
-      enum:
-        - progress
-        - milestone
-        - binary
-      title: AchievementType
     CreateNewStoryRequest:
       properties:
         userId:
@@ -533,6 +527,23 @@ components:
       required:
         - userId
       title: DeleteUserRequest
+    GenerateAudioRequest:
+      properties:
+        userId:
+          type: string
+          title: Userid
+        storyId:
+          type: string
+          title: Storyid
+        text:
+          type: string
+          title: Text
+      type: object
+      required:
+        - userId
+        - storyId
+        - text
+      title: GenerateAudioRequest
     HTTPValidationError:
       properties:
         detail:
@@ -689,6 +700,11 @@ components:
             $ref: '#/components/schemas/ImageResponse'
           type: array
           title: Storyimages
+        audioUrl:
+          anyOf:
+            - type: string
+            - type: "null"
+          title: Audiourl
       type: object
       required:
         - storyId
@@ -760,74 +776,6 @@ components:
         - storyId
         - imageFile
       title: UploadImageRequest
-    UserAchievement:
-      properties:
-        achievementId:
-          type: integer
-          title: Achievementid
-        title:
-          type: string
-          title: Title
-        description:
-          type: string
-          title: Description
-        category:
-          type: string
-          title: Category
-        type:
-          $ref: '#/components/schemas/AchievementType'
-        imageUrl:
-          type: string
-          title: Imageurl
-        state:
-          $ref: '#/components/schemas/AchievementState'
-        currentValue:
-          type: integer
-          title: Currentvalue
-        targetValue:
-          type: integer
-          title: Targetvalue
-        unit:
-          type: string
-          title: Unit
-        completedAt:
-          anyOf:
-            - type: string
-            - type: "null"
-          title: Completedat
-        reward:
-          anyOf:
-            - $ref: '#/components/schemas/AchievementReward'
-            - type: "null"
-        unlockCondition:
-          anyOf:
-            - type: string
-            - type: "null"
-          title: Unlockcondition
-      type: object
-      required:
-        - achievementId
-        - title
-        - description
-        - category
-        - type
-        - imageUrl
-        - state
-        - currentValue
-        - targetValue
-        - unit
-      title: UserAchievement
-    UserAchievementsResponse:
-      properties:
-        achievements:
-          items:
-            $ref: '#/components/schemas/UserAchievement'
-          type: array
-          title: Achievements
-      type: object
-      required:
-        - achievements
-      title: UserAchievementsResponse
     UserResponse:
       properties:
         userId:

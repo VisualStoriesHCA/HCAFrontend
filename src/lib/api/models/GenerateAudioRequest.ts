@@ -2,8 +2,9 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export enum AchievementType {
-    PROGRESS = 'progress',
-    MILESTONE = 'milestone',
-    BINARY = 'binary',
-}
+export type GenerateAudioRequest = {
+    userId: string;
+    storyId: string;
+    text: string;
+};
+

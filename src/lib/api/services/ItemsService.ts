@@ -6,13 +6,13 @@ import type { CreateNewStoryRequest } from '../models/CreateNewStoryRequest';
 import type { CreateUserRequest } from '../models/CreateUserRequest';
 import type { DeleteStoryRequest } from '../models/DeleteStoryRequest';
 import type { DeleteUserRequest } from '../models/DeleteUserRequest';
+import type { GenerateAudioRequest } from '../models/GenerateAudioRequest';
 import type { SetStoryNameRequest } from '../models/SetStoryNameRequest';
 import type { StoryBasicInfoResponse } from '../models/StoryBasicInfoResponse';
 import type { StoryDetailsResponse } from '../models/StoryDetailsResponse';
 import type { UpdateImagesByTextRequest } from '../models/UpdateImagesByTextRequest';
 import type { UpdateTextByImagesRequest } from '../models/UpdateTextByImagesRequest';
 import type { UploadImageRequest } from '../models/UploadImageRequest';
-import type { UserAchievementsResponse } from '../models/UserAchievementsResponse';
 import type { UserResponse } from '../models/UserResponse';
 import type { UserStoriesResponse } from '../models/UserStoriesResponse';
 import type { CancelablePromise } from '../core/CancelablePromise';
@@ -210,31 +210,6 @@ export class ItemsService {
         });
     }
     /**
-     * Get User Achievements
-     * Get all achievements and user progress for gamification features.
-     *
-     * This is a placeholder implementation that returns static example data.
-     * TODO: Implement actual database queries when Achievement and UserAchievement tables are created.
-     * @param userId
-     * @returns UserAchievementsResponse Successful Response
-     * @throws ApiError
-     */
-    public static getUserAchievements(
-        userId: string,
-    ): CancelablePromise<UserAchievementsResponse> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/items/getUserAchievements',
-            query: {
-                'userId': userId,
-            },
-            errors: {
-                404: `Not found`,
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
      * Update Images By Text
      * @param requestBody
      * @returns StoryDetailsResponse Successful Response
@@ -286,6 +261,26 @@ export class ItemsService {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/items/uploadImage',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                404: `Not found`,
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Generate Audio
+     * @param requestBody
+     * @returns StoryDetailsResponse Successful Response
+     * @throws ApiError
+     */
+    public static generateAudio(
+        requestBody: GenerateAudioRequest,
+    ): CancelablePromise<StoryDetailsResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/items/generateAudio',
             body: requestBody,
             mediaType: 'application/json',
             errors: {
