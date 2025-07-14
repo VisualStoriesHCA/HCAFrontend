@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, forwardRef, useImperativeHandle, useReducer, useCallback } from "react";
 import { DrawingMode } from "@/lib/types";
 import DrawingTools from "./DrawingTools";
-import LoadingSpinner from "./LoadingSpinner";
+import {ImageLoadingSpinner} from "./CustomLoadingSpinners";
 
 interface ImageCanvasProps {
   imageUrl: string | null;
@@ -683,7 +683,7 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
       {(loading || adjusting) && (
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 z-40">
           <div className="flex items-center">
-            <LoadingSpinner size="lg" className="text-white" />
+            <ImageLoadingSpinner size="lg" className="text-white" />
             <span className="ml-3 text-white">
               {loading ? "Generating image..." : "Updating story..."}
             </span>

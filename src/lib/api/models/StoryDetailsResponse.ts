@@ -3,6 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { ImageResponse } from './ImageResponse';
+import type { StorySettings } from './StorySettings';
 import type { StoryState } from './StoryState';
 export type StoryDetailsResponse = {
     storyId: string;
@@ -11,5 +12,6 @@ export type StoryDetailsResponse = {
     state: StoryState;
     storyImages: Array<ImageResponse>;
     audioUrl?: (string | null);
+    settings: StorySettings;
 };
 

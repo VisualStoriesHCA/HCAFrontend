@@ -256,6 +256,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /items/getUserAchievements:
+    get:
+      tags:
+        - items
+      summary: Get User Achievements
+      operationId: getUserAchievements
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Userid
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserAchievementsResponse'
+        "404":
+          description: Not found
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /items/updateImagesByText:
     post:
       tags:
@@ -348,6 +376,50 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/GenerateAudioRequest'
+        required: true
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoryDetailsResponse'
+        "404":
+          description: Not found
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /items/getAvailableSettings:
+    get:
+      tags:
+        - items
+      summary: Get Available Settings
+      description: "Get all available settings options for stories including image models, \ndrawing styles, and colorblind options."
+      operationId: getAvailableSettings
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailableSettingsResponse'
+        "404":
+          description: Not found
+  /items/setStoryOptions:
+    post:
+      tags:
+        - items
+      summary: Set Story Options
+      description: Update the settings (image model, drawing style, colorblind option) for a specific story.
+      operationId: setStoryOptions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetStoryOptionsRequest'
         required: true
       responses:
         "200":
@@ -479,6 +551,81 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
 components:
   schemas:
+    AchievementReward:
+      properties:
+        points:
+          anyOf:
+            - type: integer
+            - type: "null"
+          title: Points
+        badge:
+          anyOf:
+            - type: string
+            - type: "null"
+          title: Badge
+        unlocks:
+          anyOf:
+            - items:
+                type: string
+              type: array
+            - type: "null"
+          title: Unlocks
+      type: object
+      title: AchievementReward
+    AchievementState:
+      type: string
+      enum:
+        - locked
+        - in_progress
+        - completed
+      title: AchievementState
+    AchievementType:
+      type: string
+      enum:
+        - progress
+        - milestone
+        - binary
+      title: AchievementType
+    AvailableSettingsResponse:
+      properties:
+        availableImageModels:
+          items:
+            $ref: '#/components/schemas/ImageModelResponse'
+          type: array
+          title: Availableimagemodels
+        availableDrawingStyles:
+          items:
+            $ref: '#/components/schemas/DrawingStyleResponse'
+          type: array
+          title: Availabledrawingstyles
+        colorBlindOptions:
+          items:
+            $ref: '#/components/schemas/ColorBlindOptionResponse'
+          type: array
+          title: Colorblindoptions
+      type: object
+      required:
+        - availableImageModels
+        - availableDrawingStyles
+        - colorBlindOptions
+      title: AvailableSettingsResponse
+    ColorBlindOptionResponse:
+      properties:
+        colorBlindOptionId:
+          type: integer
+          title: Colorblindoptionid
+        name:
+          type: string
+          title: Name
+        description:
+          type: string
+          title: Description
+      type: object
+      required:
+        - colorBlindOptionId
+        - name
+        - description
+      title: ColorBlindOptionResponse
     CreateNewStoryRequest:
       properties:
         userId:
@@ -527,6 +674,32 @@ components:
       required:
         - userId
       title: DeleteUserRequest
+    DrawingStyleResponse:
+      properties:
+        drawingStyleId:
+          type: integer
+          title: Drawingstyleid
+        name:
+          type: string
+          title: Name
+        description:
+          type: string
+          title: Description
+        exampleImageUrl:
+          anyOf:
+            - type: string
+            - type: "null"
+          title: Exampleimageurl
+        disabled:
+          type: boolean
+          title: Disabled
+      type: object
+      required:
+        - drawingStyleId
+        - name
+        - description
+        - disabled
+      title: DrawingStyleResponse
     GenerateAudioRequest:
       properties:
         userId:
@@ -553,6 +726,27 @@ components:
           title: Detail
       type: object
       title: HTTPValidationError
+    ImageModelResponse:
+      properties:
+        imageModelId:
+          type: integer
+          title: Imagemodelid
+        name:
+          type: string
+          title: Name
+        description:
+          type: string
+          title: Description
+        disabled:
+          type: boolean
+          title: Disabled
+      type: object
+      required:
+        - imageModelId
+        - name
+        - description
+        - disabled
+      title: ImageModelResponse
     ImageResponse:
       properties:
         imageId:
@@ -605,6 +799,39 @@ components:
         - storyId
         - storyName
       title: SetStoryNameRequest
+    SetStoryOptionsRequest:
+      properties:
+        userId:
+          type: string
+          title: Userid
+        storyId:
+          type: string
+          title: Storyid
+        imageModelId:
+          anyOf:
+            - type: integer
+            - type: "null"
+          title: Imagemodelid
+        drawingStyleId:
+          anyOf:
+            - type: integer
+            - type: "null"
+          title: Drawingstyleid
+        colorBlindOptionId:
+          anyOf:
+            - type: integer
+            - type: "null"
+          title: Colorblindoptionid
+        regenerateImage:
+          anyOf:
+            - type: boolean
+            - type: "null"
+          title: Regenerateimage
+      type: object
+      required:
+        - userId
+        - storyId
+      title: SetStoryOptionsRequest
     SketchFromScratchOperation:
       properties:
         type:
@@ -705,6 +932,8 @@ components:
             - type: string
             - type: "null"
           title: Audiourl
+        settings:
+          $ref: '#/components/schemas/StorySettings'
       type: object
       required:
         - storyId
@@ -712,7 +941,29 @@ components:
         - storyText
         - state
         - storyImages
+        - settings
       title: StoryDetailsResponse
+    StorySettings:
+      properties:
+        imageModelId:
+          type: integer
+          title: Imagemodelid
+        drawingStyleId:
+          type: integer
+          title: Drawingstyleid
+        colorBlindOptionId:
+          type: integer
+          title: Colorblindoptionid
+        regenerateImage:
+          type: boolean
+          title: Regenerateimage
+      type: object
+      required:
+        - imageModelId
+        - drawingStyleId
+        - colorBlindOptionId
+        - regenerateImage
+      title: StorySettings
     StoryState:
       type: string
       enum:
@@ -776,6 +1027,74 @@ components:
         - storyId
         - imageFile
       title: UploadImageRequest
+    UserAchievement:
+      properties:
+        achievementId:
+          type: integer
+          title: Achievementid
+        title:
+          type: string
+          title: Title
+        description:
+          type: string
+          title: Description
+        category:
+          type: string
+          title: Category
+        type:
+          $ref: '#/components/schemas/AchievementType'
+        imageUrl:
+          type: string
+          title: Imageurl
+        state:
+          $ref: '#/components/schemas/AchievementState'
+        currentValue:
+          type: integer
+          title: Currentvalue
+        targetValue:
+          type: integer
+          title: Targetvalue
+        unit:
+          type: string
+          title: Unit
+        completedAt:
+          anyOf:
+            - type: string
+            - type: "null"
+          title: Completedat
+        reward:
+          anyOf:
+            - $ref: '#/components/schemas/AchievementReward'
+            - type: "null"
+        unlockCondition:
+          anyOf:
+            - type: string
+            - type: "null"
+          title: Unlockcondition
+      type: object
+      required:
+        - achievementId
+        - title
+        - description
+        - category
+        - type
+        - imageUrl
+        - state
+        - currentValue
+        - targetValue
+        - unit
+      title: UserAchievement
+    UserAchievementsResponse:
+      properties:
+        achievements:
+          items:
+            $ref: '#/components/schemas/UserAchievement'
+          type: array
+          title: Achievements
+      type: object
+      required:
+        - achievements
+      title: UserAchievementsResponse
     UserResponse:
       properties:
         userId:
