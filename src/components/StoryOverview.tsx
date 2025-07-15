@@ -1,5 +1,6 @@
 import TextEditor from "@/components/TextEditor";
 import ImageCanvas from "@/components/ImageCanvas";
+import StorySettingsButton from "@/components/StorySettingsButton"; // Updated import
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useEffect, useRef, useState } from "react";
@@ -10,8 +11,8 @@ import {
     StoryDetailsResponse,
     StoryState
 } from "@/lib/api";
-import { useUserContext } from "@/App";
-import { FileText, Image, PlusCircle, Upload, Volume2 } from "lucide-react";
+import { useUserContext, useSettingsContext } from "@/App";
+import { FileText, Image, PlusCircle, Upload, Sparkles, ChevronDown, Settings } from "lucide-react";
 import { useStoryPolling } from "@/hooks/useStoryPolling";
 import { useAsyncOperation } from "@/hooks/useAsyncOperation";
 import { determineImageOperation, validateImageFile } from "@/utils/imageOperations";
@@ -25,6 +26,7 @@ interface LoadingStates {
     pollingError: boolean;
 }
 
+
 export default function StoryOverview({ 
     storyId, 
     onStoryDelete 
@@ -33,6 +35,8 @@ export default function StoryOverview({
     onStoryDelete?: (storyId: string) => void 
 }) {
     const { userInformation } = useUserContext();
+    const { settings: availableSettings, loading: settingsLoading } = useSettingsContext();
+    
     const [story, setStory] = useState<StoryDetailsResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [loadingStates, setLoadingStates] = useState<LoadingStates>({
@@ -48,6 +52,12 @@ export default function StoryOverview({
         mode: "none",
         color: ""
     });
+
+    // Settings state - initialize with defaults
+    const [imageModel, setImageModel] = useState<number>(1);
+    const [drawingStyle, setDrawingStyle] = useState<number>(2);
+    const [colorBlindMode, setColorBlindMode] = useState<number>(1);
+    const [regenerateImage, setRegenerateImage] = useState<boolean>(false);
 
     const currentStoryIdRef = useRef<string>("");
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -87,6 +97,51 @@ export default function StoryOverview({
         });
     };
 
+    // Function to update story settings on the backend
+    const updateStorySettings = async (
+        newImageModelId?: number, 
+        newDrawingStyleId?: number, 
+        newColorBlindOptionId?: number,
+        newRegenerateImage?: boolean
+    ) => {
+        if (!storyId || !userInformation?.userId) return;
+
+        try {
+            await ItemsService.setStoryOptions({
+                userId: userInformation.userId,
+                storyId: storyId,
+                imageModelId: newImageModelId,
+                drawingStyleId: newDrawingStyleId,
+                colorBlindOptionId: newColorBlindOptionId,
+                regenerateImage: newRegenerateImage
+            });
+        } catch (error) {
+            console.error("Failed to update story settings:", error);
+            toast.error("Failed to update story settings");
+        }
+    };
+
+    // Settings change handlers
+    const handleImageModelChange = async (newImageModelId: number) => {
+        setImageModel(newImageModelId);
+        await updateStorySettings(newImageModelId, undefined, undefined, undefined);
+    };
+
+    const handleDrawingStyleChange = async (newDrawingStyleId: number) => {
+        setDrawingStyle(newDrawingStyleId);
+        await updateStorySettings(undefined, newDrawingStyleId, undefined, undefined);
+    };
+
+    const handleColorBlindModeChange = async (newColorBlindOptionId: number) => {
+        setColorBlindMode(newColorBlindOptionId);
+        await updateStorySettings(undefined, undefined, newColorBlindOptionId, undefined);
+    };
+
+    const handleRegenerateImageChange = async (newRegenerateImage: boolean) => {
+        setRegenerateImage(newRegenerateImage);
+        await updateStorySettings(undefined, undefined, undefined, newRegenerateImage);
+    };
+
     // Story fetching
     const fetchStory = async (isPollingCall = false) => {
         try {
@@ -95,6 +150,21 @@ export default function StoryOverview({
 
             if (currentStoryIdRef.current === storyId) {
                 setStory(data);
+                
+                // Update generation options from story data
+                if (data.settings?.imageModelId !== undefined) {
+                    setImageModel(data.settings.imageModelId);
+                }
+                if (data.settings?.drawingStyleId !== undefined) {
+                    setDrawingStyle(data.settings.drawingStyleId);
+                }
+                if (data.settings?.colorBlindOptionId !== undefined) {
+                    setColorBlindMode(data.settings.colorBlindOptionId);
+                }
+                if (data.settings?.regenerateImage !== undefined) {
+                    setRegenerateImage(data.settings.regenerateImage);
+                }
+                
                 if (!isPollingCall) {
                     setLoading(false);
                     clearCanvasDrawings();
@@ -142,13 +212,18 @@ export default function StoryOverview({
     // Main story initialization effect
     useEffect(() => {
         currentStoryIdRef.current = storyId;
-        resetAllLoadingStates();
+        resetAllLoadingStates(); 
         setDrawingMode({ mode: "none", color: "" });
         stopPolling();
 
         if (!storyId) {
             setLoading(false);
             setStory(null);
+            // Reset to default values
+            setImageModel(1);
+            setDrawingStyle(2);
+            setColorBlindMode(1);
+            setRegenerateImage(false);
             return;
         }
 
@@ -214,7 +289,7 @@ export default function StoryOverview({
             operation: () => ItemsService.updateImagesByText({
                 userId: userInformation.userId,
                 storyId: storyId,
-                updatedText: story.storyText
+                updatedText: story.storyText,
             }),
             onSuccess: (newStory) => {
                 setStory(newStory);
@@ -229,6 +304,13 @@ export default function StoryOverview({
                 updateLoadingState('generatingImage', false);
             }
         });
+    };
+
+    // NEW: Separate handler for generating story from image
+    const handleGenerateStoryFromImage = () => {
+        if (imageCanvasRef.current?.onGenerateStory) {
+            imageCanvasRef.current.onGenerateStory();
+        }
     };
 
     const handleGenerateStory = async (
@@ -256,7 +338,7 @@ export default function StoryOverview({
                 operation: () => ItemsService.updateTextByImages({
                     userId: userInformation.userId,
                     storyId: storyId,
-                    imageOperations: [imageOperation]
+                    imageOperations: [imageOperation],
                 }),
                 onSuccess: (updatedStory) => {
                     setStory(updatedStory);
@@ -356,7 +438,7 @@ export default function StoryOverview({
     const isStoryPending = story?.state === StoryState.PENDING;
     const isAnyOperationInProgress = Object.values(loadingStates).some(Boolean) && !loadingStates.pollingError;
 
-    // Placeholder component
+    // Placeholder component (unchanged)
     const PlaceholderContent = () => (
         <div className="flex flex-1 overflow-hidden">
             <Card className="w-1/2 border-r rounded-none">
@@ -364,11 +446,14 @@ export default function StoryOverview({
                     <div className="flex items-center justify-between">
                         <h2 className="font-semibold">Story Editor</h2>
                         <div className="flex gap-2">
-                            <Button disabled variant="outline">
-                                <Volume2 className="h-4 w-4 mr-2" />
-                                Generate Audio
+                            <Button disabled variant="outline" size="sm" className="h-8">
+                                <Sparkles className="h-3 w-3 mr-1" />
+                                Audio
                             </Button>
-                            <Button disabled variant="outline">Generate Image</Button>
+                            <Button disabled variant="default" size="sm" className="h-8">
+                                <Sparkles className="h-3 w-3 mr-1" />
+                                Image
+                            </Button>
                         </div>
                     </div>
                 </CardHeader>
@@ -391,8 +476,14 @@ export default function StoryOverview({
                     <div className="flex items-center justify-between">
                         <h2 className="font-semibold">Image Canvas</h2>
                         <div className="flex gap-2">
-                            <Button disabled variant="outline">Upload Sketch</Button>
-                            <Button disabled variant="outline">Generate Story</Button>
+                            <Button disabled variant="outline" size="sm" className="h-8">
+                                <Upload className="h-3 w-3 mr-1" />
+                                Upload
+                            </Button>
+                            <Button disabled variant="outline" size="sm" className="h-8">
+                                <Sparkles className="h-3 w-3 mr-1" />
+                                Story
+                            </Button>
                         </div>
                     </div>
                 </CardHeader>
@@ -416,6 +507,18 @@ export default function StoryOverview({
         return <PlaceholderContent />;
     }
 
+    // Show loading state while settings are being fetched
+    if (settingsLoading) {
+        return (
+            <div className="flex flex-1 overflow-hidden items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+                    <p className="text-gray-500">Loading application settings...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="flex flex-1 overflow-hidden relative">
             {/* Left panel */}
@@ -427,16 +530,21 @@ export default function StoryOverview({
                             onClick={handleGenerateAudio}
                             disabled={loadingStates.generatingAudio || !story?.storyText?.trim() || isAnyOperationInProgress}
                             variant="outline"
+                            size="sm"
+                            className="h-8"
                         >
-                            <Volume2 className="h-4 w-4 mr-2" />
-                            {loadingStates.generatingAudio || isStoryPending ? "Generating..." : "Generate Audio"}
+                            <Sparkles className="h-3 w-3 mr-1" />
+                            {loadingStates.generatingAudio || isStoryPending ? "Generating..." : "Audio"}
                         </Button>
                         <Button
                             onClick={handleGenerateImage}
                             disabled={loadingStates.generatingImage || !story?.storyText?.trim() || isAnyOperationInProgress}
                             variant="default"
+                            size="sm"
+                            className="h-8"
                         >
-                            {loadingStates.generatingImage || isStoryPending ? "Generating..." : "Generate Image"}
+                            <Sparkles className="h-3 w-3 mr-1" />
+                            {loadingStates.generatingImage || isStoryPending ? "Generating..." : "Image"}
                         </Button>
                     </div>
                 </div>
@@ -456,21 +564,42 @@ export default function StoryOverview({
                 <div className="p-4 border-b flex items-center justify-between">
                     <h2 className="font-semibold">Image Canvas</h2>
                     <div className="flex gap-2">
+                        {/* NEW: Separate Story Generation Button */}
                         <Button
+                            onClick={handleGenerateStoryFromImage}
+                            disabled={isAnyOperationInProgress}
+                            variant="default"
+                            size="sm"
+                            className="h-8"
+                        >
+                            <Sparkles className="h-3 w-3 mr-1" />
+                            {loadingStates.adjustingStory || isStoryPending || loadingStates.generatingImage ? "Generating..." : "Story"}
+                        </Button>
+                                                <Button
                             onClick={handleUploadSketch}
                             disabled={isAnyOperationInProgress}
                             variant="outline"
+                            size="sm"
+                            className="h-8"
                         >
-                            <Upload className="h-4 w-4 mr-2" />
-                            {loadingStates.uploadingSketch ? "Uploading..." : "Upload Sketch"}
+                            <Upload className="h-3 w-3" />
+                            {loadingStates.uploadingSketch ? "Uploading..." : ""}
                         </Button>
-                        <Button
-                            onClick={() => imageCanvasRef.current?.onGenerateStory()}
+                        {/* NEW: Separate Settings Button */}
+                        <StorySettingsButton
                             disabled={isAnyOperationInProgress}
-                            variant="default"
-                        >
-                            {loadingStates.adjustingStory || isStoryPending || loadingStates.generatingImage ? "Generating..." : "Generate Story"}
-                        </Button>
+                            imageModel={imageModel}
+                            drawingStyle={drawingStyle}
+                            colorBlindMode={colorBlindMode}
+                            regenerateImage={regenerateImage}
+                            onImageModelChange={handleImageModelChange}
+                            onDrawingStyleChange={handleDrawingStyleChange}
+                            onColorBlindModeChange={handleColorBlindModeChange}
+                            onRegenerateImageChange={handleRegenerateImageChange}
+                            availableImageModels={availableSettings?.availableImageModels || []}
+                            availableDrawingStyles={availableSettings?.availableDrawingStyles || []}
+                            colorBlindOptions={availableSettings?.colorBlindOptions || []}
+                        />
                     </div>
                 </div>
 
@@ -497,7 +626,7 @@ export default function StoryOverview({
                 />
             </div>
 
-            {/* Error notification */}
+            {/* Error notification (unchanged) */}
             {loadingStates.pollingError && story && (
                 <Card className="fixed bottom-4 right-4 w-[360px] shadow-lg border-red-200 bg-red-50 z-50">
                     <CardHeader className="pb-2">

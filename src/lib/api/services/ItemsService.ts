@@ -2,17 +2,20 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { AvailableSettingsResponse } from '../models/AvailableSettingsResponse';
 import type { CreateNewStoryRequest } from '../models/CreateNewStoryRequest';
 import type { CreateUserRequest } from '../models/CreateUserRequest';
 import type { DeleteStoryRequest } from '../models/DeleteStoryRequest';
 import type { DeleteUserRequest } from '../models/DeleteUserRequest';
 import type { GenerateAudioRequest } from '../models/GenerateAudioRequest';
 import type { SetStoryNameRequest } from '../models/SetStoryNameRequest';
+import type { SetStoryOptionsRequest } from '../models/SetStoryOptionsRequest';
 import type { StoryBasicInfoResponse } from '../models/StoryBasicInfoResponse';
 import type { StoryDetailsResponse } from '../models/StoryDetailsResponse';
 import type { UpdateImagesByTextRequest } from '../models/UpdateImagesByTextRequest';
 import type { UpdateTextByImagesRequest } from '../models/UpdateTextByImagesRequest';
 import type { UploadImageRequest } from '../models/UploadImageRequest';
+import type { UserAchievementsResponse } from '../models/UserAchievementsResponse';
 import type { UserResponse } from '../models/UserResponse';
 import type { UserStoriesResponse } from '../models/UserStoriesResponse';
 import type { CancelablePromise } from '../core/CancelablePromise';
@@ -210,6 +213,27 @@ export class ItemsService {
         });
     }
     /**
+     * Get User Achievements
+     * @param userId
+     * @returns UserAchievementsResponse Successful Response
+     * @throws ApiError
+     */
+    public static getUserAchievements(
+        userId: string,
+    ): CancelablePromise<UserAchievementsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/items/getUserAchievements',
+            query: {
+                'userId': userId,
+            },
+            errors: {
+                404: `Not found`,
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
      * Update Images By Text
      * @param requestBody
      * @returns StoryDetailsResponse Successful Response
@@ -281,6 +305,43 @@ export class ItemsService {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/items/generateAudio',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                404: `Not found`,
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get Available Settings
+     * Get all available settings options for stories including image models,
+     * drawing styles, and colorblind options.
+     * @returns AvailableSettingsResponse Successful Response
+     * @throws ApiError
+     */
+    public static getAvailableSettings(): CancelablePromise<AvailableSettingsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/items/getAvailableSettings',
+            errors: {
+                404: `Not found`,
+            },
+        });
+    }
+    /**
+     * Set Story Options
+     * Update the settings (image model, drawing style, colorblind option) for a specific story.
+     * @param requestBody
+     * @returns StoryDetailsResponse Successful Response
+     * @throws ApiError
+     */
+    public static setStoryOptions(
+        requestBody: SetStoryOptionsRequest,
+    ): CancelablePromise<StoryDetailsResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/items/setStoryOptions',
             body: requestBody,
             mediaType: 'application/json',
             errors: {
