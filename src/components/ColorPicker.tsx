@@ -18,21 +18,8 @@ const ColorPicker = ({
   onModeChange, 
   disabled = false 
 }: ColorPickerProps) => {
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [hexInput, setHexInput] = useState(currentColor);
-  const [brightness, setBrightness] = useState(1);
-  const [baseHsv, setBaseHsv] = useState({ h: 0, s: 1, v: 1 }); // Track base HSV for brightness adjustments
-  const colorWheelRef = useRef<HTMLCanvasElement>(null);
-  const isInternalUpdate = useRef(false); // Track internal vs external color updates
-  const [colorWheelSize] = useState(150);
-
-  // Update hex input when currentColor changes
-  useEffect(() => {
-    setHexInput(currentColor);
-  }, [currentColor]);
-
-  // 10 basic colors for quick selection
-  const basicColors = [
+  // Initial preset colors
+  const initialColors = [
     "#000000", // Black
     "#FF0000", // Red
     "#00FF00", // Green
@@ -44,6 +31,21 @@ const ColorPicker = ({
     "#800080", // Purple
     "#FFFFFF", // White
   ];
+
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [hexInput, setHexInput] = useState(currentColor);
+  const [brightness, setBrightness] = useState(1);
+  const [baseHsv, setBaseHsv] = useState({ h: 0, s: 1, v: 1 });
+  const [activeSlot, setActiveSlot] = useState<number | null>(null); // Track which slot is active
+  const [slotColors, setSlotColors] = useState<string[]>(initialColors); // Configurable slot colors
+  const colorWheelRef = useRef<HTMLCanvasElement>(null);
+  const isInternalUpdate = useRef(false);
+  const [colorWheelSize] = useState(150);
+
+  // Update hex input when currentColor changes
+  useEffect(() => {
+    setHexInput(currentColor);
+  }, [currentColor]);
 
   // Convert RGB hex to HSV
   const hexToHsv = useCallback((hex: string) => {
@@ -115,28 +117,41 @@ const ColorPicker = ({
       const hsv = hexToHsv(currentColor);
       setBaseHsv(hsv);
       setBrightness(hsv.v);
+      
+      // Reset active slot when color changes externally (e.g., story switch)
+      // Only reset if the new color doesn't match the currently active slot
+      if (activeSlot !== null && slotColors[activeSlot] !== currentColor) {
+        console.log('External color change detected, resetting active slot');
+        setActiveSlot(null);
+      }
     }
-    isInternalUpdate.current = false; // Reset flag
-  }, [currentColor, hexToHsv]);
+    isInternalUpdate.current = false;
+  }, [currentColor, hexToHsv, activeSlot, slotColors]);
 
   // Apply brightness changes to current color
   useEffect(() => {
     if (currentMode === "draw") {
       const newColor = hsvToHex(baseHsv.h, baseHsv.s, brightness);
       if (newColor !== currentColor) {
-        isInternalUpdate.current = true; // Mark as internal update
+        isInternalUpdate.current = true;
         onColorChange(newColor);
+        
+        // Update the active slot with the new color
+        if (activeSlot !== null) {
+          setSlotColors(prev => {
+            const newColors = [...prev];
+            newColors[activeSlot] = newColor;
+            return newColors;
+          });
+        }
       }
     }
-  }, [brightness, baseHsv.h, baseHsv.s, currentMode, hsvToHex, onColorChange, currentColor]);
+  }, [brightness, baseHsv.h, baseHsv.s, currentMode, hsvToHex, onColorChange, currentColor, activeSlot]);
 
   // Draw color wheel using the current brightness value
   const drawColorWheel = useCallback(() => {
     const canvas = colorWheelRef.current;
-    if (!canvas) {
-      console.log('Canvas not available');
-      return;
-    }
+    if (!canvas) return;
     
     if (canvas.width !== colorWheelSize || canvas.height !== colorWheelSize) {
       canvas.width = colorWheelSize;
@@ -144,12 +159,7 @@ const ColorPicker = ({
     }
     
     const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      console.log('Canvas context not available');
-      return;
-    }
-
-    console.log('Drawing color wheel...', { width: canvas.width, height: canvas.height, brightness });
+    if (!ctx) return;
     
     ctx.clearRect(0, 0, colorWheelSize, colorWheelSize);
     
@@ -225,8 +235,6 @@ const ColorPicker = ({
     ctx.strokeStyle = '#333';
     ctx.lineWidth = 2;
     ctx.stroke();
-    
-    console.log('Color wheel drawing completed');
   }, [colorWheelSize, hsvToRgb, brightness]);
 
   // Handle color wheel click
@@ -253,28 +261,34 @@ const ColorPicker = ({
       const [red, green, blue] = hsvToRgb(hue, saturation, brightness);
       const hex = `#${red.toString(16).padStart(2, '0')}${green.toString(16).padStart(2, '0')}${blue.toString(16).padStart(2, '0')}`;
       
-      console.log('Color wheel clicked - new color:', hex);
-      
       // Handle mode change first if needed, then color change
       if (currentMode !== "draw") {
         onModeChange("draw");
       }
       
-      // Update base HSV to the new color selection
+      // Update base HSV and apply color
       setBaseHsv({ h: hue, s: saturation, v: brightness });
-      isInternalUpdate.current = true; // Mark as internal update
+      isInternalUpdate.current = true;
       onColorChange(hex);
+      
+      // Update the active slot with the new color
+      if (activeSlot !== null) {
+        setSlotColors(prev => {
+          const newColors = [...prev];
+          newColors[activeSlot] = hex;
+          return newColors;
+        });
+      }
     }
-  }, [colorWheelSize, hsvToRgb, onColorChange, onModeChange, disabled, currentMode, brightness]);
+  }, [colorWheelSize, hsvToRgb, onColorChange, onModeChange, disabled, currentMode, brightness, activeSlot]);
 
-  // Initialize color wheel with proper timing
+  // Initialize color wheel
   useEffect(() => {
     const timer = setTimeout(() => {
       const canvas = colorWheelRef.current;
       if (canvas) {
         canvas.width = colorWheelSize;
         canvas.height = colorWheelSize;
-        console.log('Canvas initialized:', { width: canvas.width, height: canvas.height });
         drawColorWheel();
       }
     }, 50);
@@ -303,25 +317,29 @@ const ColorPicker = ({
     }
   }, [brightness, drawColorWheel, showAdvanced]);
 
-  // Handle color selection properly to avoid race condition
-  const handleColorSelect = (color: string) => {
-    console.log('Basic color selected:', color);
+  // Handle color slot selection
+  const handleSlotSelect = (slotIndex: number, color: string) => {
+    console.log('Slot selected:', slotIndex, color);
+    
+    // Set this slot as active
+    setActiveSlot(slotIndex);
     
     // If mode needs to change, change it first, then change color
     if (currentMode !== "draw") {
       onModeChange("draw");
     }
     
-    // Update base HSV to the new color selection
+    // Update base HSV to the selected color
     const hsv = hexToHsv(color);
     setBaseHsv(hsv);
     setBrightness(hsv.v);
-    isInternalUpdate.current = true; // Mark as internal update
+    isInternalUpdate.current = true;
     onColorChange(color);
   };
 
   const handleEraserSelect = () => {
     console.log('Eraser selected');
+    setActiveSlot(null); // Clear active slot when eraser is selected
     onModeChange("erase");
   };
 
@@ -335,12 +353,22 @@ const ColorPicker = ({
         onModeChange("draw");
       }
       
-      // Update base HSV to the new color selection
+      // Update base HSV to the new color
       const hsv = hexToHsv(hex);
       setBaseHsv(hsv);
       setBrightness(hsv.v);
-      isInternalUpdate.current = true; // Mark as internal update
+      isInternalUpdate.current = true;
       onColorChange(hex);
+      
+      // Update the active slot with the new color
+      if (activeSlot !== null) {
+        setSlotColors(prev => {
+          const newColors = [...prev];
+          newColors[activeSlot] = hex;
+          return newColors;
+        });
+      }
+      
       setShowAdvanced(false);
     } else {
       alert('Please enter a valid hex color (e.g., #FF0000)');
@@ -362,7 +390,7 @@ const ColorPicker = ({
     <div className="flex flex-col gap-3">
       {/* Debug info */}
       <div className="text-xs text-gray-500">
-        Current: {currentColor} | Mode: {currentMode} | HSV: {Math.round(baseHsv.h)}°, {Math.round(baseHsv.s * 100)}%, {Math.round(brightness * 100)}%
+        Current: {currentColor} | Mode: {currentMode} | Active Slot: {activeSlot !== null ? activeSlot + 1 : 'None'} | HSV: {Math.round(baseHsv.h)}°, {Math.round(baseHsv.s * 100)}%, {Math.round(brightness * 100)}%
       </div>
       
       {/* Basic Colors Row with Eraser */}
@@ -387,22 +415,38 @@ const ColorPicker = ({
         {/* Separator */}
         <div className="w-px h-6 bg-gray-300 mx-1"></div>
         
-        {/* Basic color swatches */}
-        {basicColors.map((color) => (
-          <button
-            key={color}
-            type="button"
-            className={`w-6 h-6 rounded border-2 transition-all ${
-              currentMode === "draw" && currentColor === color 
-                ? "border-gray-800 scale-110 shadow-md" 
-                : "border-gray-300 hover:border-gray-500"
-            }`}
-            style={{ backgroundColor: color }}
-            onClick={() => handleColorSelect(color)}
-            disabled={disabled}
-            title={`${color} ${currentMode === "draw" && currentColor === color ? '(selected)' : ''}`}
-          />
-        ))}
+        {/* Color slot swatches */}
+        {slotColors.map((color, index) => {
+          const isCurrentColor = currentMode === "draw" && currentColor === color;
+          const isActiveSlot = activeSlot === index;
+          
+          return (
+            <button
+              key={index}
+              type="button"
+              className={`relative w-6 h-6 rounded border-2 transition-all ${
+                isCurrentColor && isActiveSlot
+                  ? "border-blue-600 scale-110 shadow-md" 
+                  : isActiveSlot
+                  ? "border-blue-400 scale-105"
+                  : isCurrentColor
+                  ? "border-gray-800 scale-110 shadow-md"
+                  : "border-gray-300 hover:border-gray-500"
+              }`}
+              style={{ backgroundColor: color }}
+              onClick={() => handleSlotSelect(index, color)}
+              disabled={disabled}
+              title={`Slot ${index + 1}: ${color} ${isActiveSlot ? '(active slot)' : ''} ${isCurrentColor ? '(current color)' : ''}`}
+            >
+              {/* Active slot indicator */}
+              {isActiveSlot && (
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border border-white flex items-center justify-center">
+                  <div className="w-1 h-1 bg-white rounded-full"></div>
+                </div>
+              )}
+            </button>
+          );
+        })}
         
         {/* Advanced color picker toggle */}
         <Button
@@ -464,6 +508,15 @@ const ColorPicker = ({
                 title={`Current: ${currentColor}`}
               />
             </div>
+            
+            {/* Slot info */}
+            {activeSlot !== null && (
+              <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                Active Slot: {activeSlot + 1}
+                <br />
+                Custom colors will override this slot
+              </div>
+            )}
             
             {/* Brightness Slider */}
             <div className="flex flex-col gap-2 mt-2">
