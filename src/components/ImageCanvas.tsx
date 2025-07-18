@@ -107,6 +107,7 @@ function canvasReducer(state: CanvasState, action: CanvasAction): CanvasState {
     case 'CLEAR_HISTORY':
       return { ...state, history: [], historyIndex: -1, hasUserDrawings: false };
     case 'SET_ZOOM':
+      console.log('Reducer SET_ZOOM: old =', state.zoom, 'new =', action.payload);
       return { ...state, zoom: action.payload };
     case 'SET_BASE_ZOOM':
       return { ...state, baseZoom: action.payload };
@@ -165,7 +166,12 @@ function useCanvasOperations(canvasRef: React.RefObject<HTMLCanvasElement>, stat
       ctx.fillStyle = "#f0f0f0";
       ctx.fillRect(0, 0, state.dimensions.width, state.dimensions.height);
     }
-  }, [getContext, clearCanvas, state.backgroundImage, state.imagePosition, state.dimensions]);
+
+    if (state.history.length > 0 && state.historyIndex >= 0) {
+      const currentState = state.history[state.historyIndex];
+      ctx.putImageData(currentState, 0, 0);
+    }
+  }, [getContext, clearCanvas, state.backgroundImage, state.imagePosition, state.dimensions, state.history, state.historyIndex]);
 
   return {
     getContext,
@@ -251,7 +257,6 @@ function useDrawing(
       ctx.globalCompositeOperation = "source-over";
     } else {
       ctx.globalCompositeOperation = "source-over";
-      // CRITICAL FIX: Set the stroke color here
       ctx.strokeStyle = drawingMode.color || "#000000";
       ctx.beginPath();
       ctx.moveTo(x, y);
@@ -390,13 +395,11 @@ function useImageLoader(
       const fittedWidth = image.width * fitScale;
       const fittedHeight = image.height * fitScale;
 
-      // Canvas size is larger to allow for drawing around the image
-      const canvasWidth = Math.max(fittedWidth * 1.5, fittedWidth + 200);
-      const canvasHeight = Math.max(fittedHeight * 1.5, fittedHeight + 200);
+      const canvasWidth = fittedWidth;
+      const canvasHeight = fittedHeight;
 
-      // Center the image on the canvas
-      const imageX = (canvasWidth - fittedWidth) / 2;
-      const imageY = (canvasHeight - fittedHeight) / 2;
+      const imageX = 0;
+      const imageY = 0;
 
       // Update canvas dimensions
       const canvas = canvasRef.current;
@@ -472,36 +475,32 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
     drawingMode
   );
 
-  // Monitor container size changes
+  // Monitor container size changes - but only for initial setup
   useEffect(() => {
     const updateContainerSize = () => {
       if (containerRef.current) {
         const { width, height } = containerRef.current.getBoundingClientRect();
-        dispatch({
-          type: 'SET_CONTAINER_SIZE',
-          payload: { width: width || 800, height: height || 600 }
-        });
+        // Only update container size if it's significantly different or first time
+        if (Math.abs(width - state.containerSize.width) > 50 || Math.abs(height - state.containerSize.height) > 50) {
+          dispatch({
+            type: 'SET_CONTAINER_SIZE',
+            payload: { width: width || 800, height: height || 600 }
+          });
+        }
       }
     };
 
+    // Only run once on mount
     updateContainerSize();
-
-    const resizeObserver = new ResizeObserver(updateContainerSize);
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-
-    return () => resizeObserver.disconnect();
-  }, []);
+  }, []); // Empty dependency array - only run once
 
   // Initialize canvas when image URL changes
   useEffect(() => {
     if (!generatingImage) {
       loadImage(imageUrl);
     }
-  }, [imageUrl, generatingImage, loadImage, state.containerSize]);
+  }, [imageUrl, generatingImage, loadImage]);
 
-  // CRITICAL FIX: Update canvas context when drawing mode changes
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas) {
@@ -510,7 +509,6 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
         ctx.lineWidth = drawingMode.thickness || 5;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
-        // CRITICAL FIX: Set the stroke color here
         ctx.strokeStyle = drawingMode.color || "#000000";
 
         console.log('Canvas context updated with new drawing mode:', {
@@ -522,7 +520,7 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
     }
   }, [drawingMode]);
 
-  // Redraw canvas when background image or dimensions change
+  // Redraw canvas only when background image changes, not on dimension changes
   useEffect(() => {
     redrawCanvas();
 
@@ -530,7 +528,7 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
     if (state.history.length === 0) {
       setTimeout(() => saveToHistory(), 0);
     }
-  }, [state.backgroundImage, state.dimensions, redrawCanvas, saveToHistory, state.history.length]);
+  }, [state.backgroundImage, redrawCanvas, saveToHistory, state.history.length]); // Removed state.dimensions
 
   // Restore canvas state when history changes (undo/redo)
   useEffect(() => {
@@ -563,15 +561,18 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
     setTimeout(() => saveToHistory(), 0);
   }, [redrawCanvas, saveToHistory]);
 
-  // Zoom controls with proper centering
   const handleZoomIn = useCallback(() => {
-    const newZoom = Math.min(4, state.zoom + 0.25);
+    const newZoom = Math.round(Math.min(4, state.zoom + 0.25) * 100) / 100; // Round to avoid floating point issues
     dispatch({ type: 'SET_ZOOM', payload: newZoom });
   }, [state.zoom]);
 
   const handleZoomOut = useCallback(() => {
-    const newZoom = Math.max(0.5, state.zoom - 0.25);
-    dispatch({ type: 'SET_ZOOM', payload: newZoom });
+    const newZoom = Math.round(Math.max(0.75, state.zoom - 0.25) * 100) / 100; // Round to avoid floating point issues
+    console.log('Zoom out: current =', state.zoom, 'new =', newZoom);
+    // Only dispatch if the new zoom is different (prevents snap-back)
+    if (Math.abs(newZoom - state.zoom) > 0.01) {
+      dispatch({ type: 'SET_ZOOM', payload: newZoom });
+    }
   }, [state.zoom]);
 
   const handleResetZoom = useCallback(() => {
@@ -607,6 +608,7 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
     hasBackgroundImage: !!state.backgroundImage,
     clearAllDrawings
   }));
+  
   return (
     <div ref={containerRef} className={`flex flex-col h-full ${className} relative`}>
       {/* Canvas container */}

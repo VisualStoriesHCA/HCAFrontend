@@ -191,7 +191,7 @@ const DrawingTools = ({
             size="sm"
             variant="outline"
             onClick={handleZoomOut}
-            disabled={!hasImage || zoom <= 0.1 || disabled}
+            disabled={!hasImage || zoom <= 0.75 || disabled}
             className="h-7 w-7 p-0"
           >
             <ZoomOut className="h-3 w-3" />
