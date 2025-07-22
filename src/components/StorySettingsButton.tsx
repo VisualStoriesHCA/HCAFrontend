@@ -162,7 +162,7 @@ export default function StorySettingsButton({
               <div className="space-y-0.5">
                 <label className="text-sm font-medium">Regenerate Image</label>
                 <div className="text-xs text-muted-foreground">
-                  Always create new images (If disbaled the user's sketch will remain unchanged)
+                  Always create new images (If disabled the user's sketch will remain unchanged)
                 </div>
               </div>
               <Switch
