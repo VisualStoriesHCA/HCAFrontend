@@ -12,7 +12,7 @@ import {
     StoryState
 } from "@/lib/api";
 import { useUserContext, useSettingsContext } from "@/App";
-import { FileText, Image, PlusCircle, Upload, Sparkles, ChevronDown, Settings } from "lucide-react";
+import { FileText, Image, PlusCircle, Upload, Sparkles, ChevronDown, Settings, Lightbulb } from "lucide-react";
 import { useStoryPolling } from "@/hooks/useStoryPolling";
 import { useAsyncOperation } from "@/hooks/useAsyncOperation";
 import { determineImageOperation, validateImageFile } from "@/utils/imageOperations";
@@ -26,6 +26,12 @@ interface LoadingStates {
     pollingError: boolean;
 }
 
+// Story suggestions data
+const STORY_SUGGESTIONS = [
+    "A curious cat discovers a magical doorway that leads to a world made entirely of yarn.",
+    "On a rainy afternoon, Emma finds an old umbrella that can fly anywhere she imagines.",
+    "The last tree in the city starts glowing at night, attracting neighborhood animals."
+];
 
 export default function StoryOverview({ 
     storyId, 
@@ -95,6 +101,18 @@ export default function StoryOverview({
             if (!prevStory) return null;
             return { ...prevStory, storyText: content };
         });
+    };
+
+    // Check if both text and image are empty (for showing suggestions)
+    const isEmptyStory = () => {
+        const hasText = story?.storyText?.trim();
+        const hasImage = story?.storyImages?.[0]?.url;
+        return !hasText && !hasImage;
+    };
+
+    // Handle suggestion click
+    const handleSuggestionClick = (suggestionText: string) => {
+        setStoryContent(suggestionText);
     };
 
     // Function to update story settings on the backend
@@ -438,6 +456,51 @@ export default function StoryOverview({
     const isStoryPending = story?.state === StoryState.PENDING;
     const isAnyOperationInProgress = Object.values(loadingStates).some(Boolean) && !loadingStates.pollingError;
 
+    // Story Suggestions Component
+    const StorySuggestions = () => {
+        const [showTooltip, setShowTooltip] = useState(false);
+
+        if (!isEmptyStory() || loading) return null;
+
+        return (
+            <div className="absolute bottom-4 left-4 right-4 z-10">
+                {/* Tooltip positioned above the entire suggestions container */}
+                {showTooltip && (
+                    <div className="absolute bottom-full left-0 right-0 mb-2 z-50">
+                        <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+                            <div className="text-xs text-gray-600">
+                                Generating Suggestions based on your Usage. Continue using Sketchtale to have more personalized Suggestions.
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
+                <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                       
+                        <span className="text-sm font-medium ml-2 text-gray-700">Story Ideas</span>
+                        <Sparkles 
+                            className="h-4 w-4 text-purple-500 cursor-help" 
+                            onMouseEnter={() => setShowTooltip(true)}
+                            onMouseLeave={() => setShowTooltip(false)}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        {STORY_SUGGESTIONS.map((suggestion, index) => (
+                            <button
+                                key={index}
+                                onClick={() => handleSuggestionClick(suggestion)}
+                                className="w-full text-left p-3 rounded-md bg-gray-50 hover:bg-blue-50 hover:border-blue-200 border border-transparent transition-colors duration-200 text-sm text-gray-600 hover:text-blue-700"
+                            >
+                                {suggestion}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     // Placeholder component (unchanged)
     const PlaceholderContent = () => (
         <div className="flex flex-1 overflow-hidden">
@@ -522,7 +585,7 @@ export default function StoryOverview({
     return (
         <div className="flex flex-1 overflow-hidden relative">
             {/* Left panel */}
-            <div className="flex flex-col w-1/2 border-r">
+            <div className="flex flex-col w-1/2 border-r relative">
                 <div className="p-4 border-b flex items-center justify-between">
                     <h2 className="font-semibold">Story Editor</h2>
                     <div className="flex gap-2">
@@ -557,6 +620,9 @@ export default function StoryOverview({
                     adjusting={loadingStates.adjustingStory || isStoryPending}
                     className="flex-1"
                 />
+                
+                {/* Story Suggestions - positioned at the bottom of the text editor */}
+                <StorySuggestions />
             </div>
 
             {/* Right panel */}
