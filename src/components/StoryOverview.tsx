@@ -18,6 +18,7 @@ import { useAsyncOperation } from "@/hooks/useAsyncOperation";
 import { determineImageOperation, validateImageFile } from "@/utils/imageOperations";
 
 interface LoadingStates {
+    initialLoading: boolean;
     generatingImage: boolean;
     generatingAudio: boolean;
     adjustingStory: boolean;
@@ -44,8 +45,8 @@ export default function StoryOverview({
     const { settings: availableSettings, loading: settingsLoading } = useSettingsContext();
     
     const [story, setStory] = useState<StoryDetailsResponse | null>(null);
-    const [loading, setLoading] = useState(true);
     const [loadingStates, setLoadingStates] = useState<LoadingStates>({
+        initialLoading: true,
         generatingImage: false,
         generatingAudio: false,
         adjustingStory: false,
@@ -79,6 +80,7 @@ export default function StoryOverview({
 
     const resetAllLoadingStates = () => {
         setLoadingStates({
+            initialLoading: false,
             generatingImage: false,
             generatingAudio: false,
             adjustingStory: false,
@@ -184,7 +186,7 @@ export default function StoryOverview({
                 }
                 
                 if (!isPollingCall) {
-                    setLoading(false);
+                    updateLoadingState('initialLoading', false);
                     clearCanvasDrawings();
                 }
             }
@@ -193,7 +195,7 @@ export default function StoryOverview({
             console.error("Failed to fetch story:", error);
             if (!isPollingCall && currentStoryIdRef.current === storyId) {
                 toast.error("Failed to load story. Please try again.");
-                setLoading(false);
+                updateLoadingState('initialLoading', false);
             }
             throw error;
         }
@@ -230,12 +232,11 @@ export default function StoryOverview({
     // Main story initialization effect
     useEffect(() => {
         currentStoryIdRef.current = storyId;
-        resetAllLoadingStates(); 
-        setDrawingMode({ mode: "none", color: "" });
-        stopPolling();
-
+        
         if (!storyId) {
-            setLoading(false);
+            resetAllLoadingStates(); 
+            setDrawingMode({ mode: "none", color: "" });
+            stopPolling();
             setStory(null);
             // Reset to default values
             setImageModel(1);
@@ -245,8 +246,13 @@ export default function StoryOverview({
             return;
         }
 
+        // Set loading immediately to prevent flash
+        updateLoadingState('initialLoading', true);
+        resetAllLoadingStates();
+        updateLoadingState('initialLoading', true); // Ensure it stays true after reset
+        setDrawingMode({ mode: "none", color: "" });
+        stopPolling();
         setStory(null);
-        setLoading(true);
 
         const initializeStory = async () => {
             try {
@@ -447,7 +453,7 @@ export default function StoryOverview({
         updateLoadingState('isPolling', false);
         onStoryDelete?.(storyId);
         setStory(null);
-        setLoading(false);
+        updateLoadingState('initialLoading', false);
         currentStoryIdRef.current = "";
         stopPolling();
     };
@@ -460,7 +466,8 @@ export default function StoryOverview({
     const StorySuggestions = () => {
         const [showTooltip, setShowTooltip] = useState(false);
 
-        if (!isEmptyStory() || loading) return null;
+
+        if (loadingStates.initialLoading || !isEmptyStory() || isAnyOperationInProgress) return null;
 
         return (
             <div className="absolute bottom-4 left-4 right-4 z-10">
