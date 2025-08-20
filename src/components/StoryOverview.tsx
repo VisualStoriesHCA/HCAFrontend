@@ -27,12 +27,6 @@ interface LoadingStates {
     pollingError: boolean;
 }
 
-const STORY_SUGGESTIONS = [
-    "A curious cat discovers a magical doorway that leads to a world made entirely of yarn.",
-    "On a rainy afternoon, Emma finds an old umbrella that can fly anywhere she imagines.",
-    "The last tree in the city starts glowing at night, attracting neighborhood animals."
-];
-
 export default function StoryOverview({ 
     storyId, 
     onStoryDelete 
@@ -106,7 +100,7 @@ export default function StoryOverview({
 
     // Check if both text and image are empty (for showing suggestions)
     const isEmptyStory = () => {
-        const hasText = story?.storyText?.trim();
+        const hasText = !isTextFieldEmpty();
         const hasImage = story?.storyImages?.[0]?.url;
         return !hasText && !hasImage;
     };
@@ -586,6 +580,10 @@ export default function StoryOverview({
         );
     }
 
+    const isTextFieldEmpty= () => {
+        return (!story?.storyText?.trim() || !story.storyText?.replace(/<br\s*\/?>/gi, "").trim())
+    }
+
     return (
         <div className="flex flex-1 overflow-hidden relative">
             {/* Left panel */}
@@ -595,7 +593,7 @@ export default function StoryOverview({
                     <div className="flex gap-2">
                         <Button
                             onClick={handleGenerateAudio}
-                            disabled={loadingStates.generatingAudio || !story?.storyText?.trim() || isAnyOperationInProgress}
+                            disabled={loadingStates.generatingAudio || isTextFieldEmpty() || isAnyOperationInProgress}
                             variant="outline"
                             size="sm"
                             className="h-8"
@@ -605,7 +603,7 @@ export default function StoryOverview({
                         </Button>
                         <Button
                             onClick={handleGenerateImage}
-                            disabled={loadingStates.generatingImage || !story?.storyText?.trim() || isAnyOperationInProgress}
+                            disabled={loadingStates.generatingImage || isTextFieldEmpty() || isAnyOperationInProgress}
                             variant="default"
                             size="sm"
                             className="h-8"
