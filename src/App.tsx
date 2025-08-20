@@ -9,7 +9,7 @@ import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import { UserResponse, ItemsService, AvailableSettingsResponse } from "./lib/api";
 
-// Set the base URL
+// Base URL
 import { OpenAPI } from './lib/api';
 OpenAPI.BASE = 'http://localhost:8080';
 
@@ -47,13 +47,6 @@ export const useSettingsContext = () => {
 
 // User Context Provider
 const UserContextProvider = ({ children }: { children: ReactNode }) => {
-  const testUser: UserResponse = {
-    userId: "testUserId",
-    userName: "testUser",
-    name: "Test User",
-    accountCreated: "2023-10-01T12:00:00Z",
-  };
-  
   const [userInformation, setUserInformation] = useState<UserResponse | null>(null);
   
   return (

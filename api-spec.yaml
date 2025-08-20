@@ -934,6 +934,13 @@ components:
           title: Audiourl
         settings:
           $ref: '#/components/schemas/StorySettings'
+        suggestions:
+          anyOf:
+            - items:
+                type: string
+              type: array
+            - type: "null"
+          title: Suggestions
       type: object
       required:
         - storyId
@@ -969,6 +976,7 @@ components:
       enum:
         - pending
         - completed
+        - error
       title: StoryState
     UpdateImagesByTextRequest:
       properties:

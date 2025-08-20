@@ -40,7 +40,7 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
 
   const onLogout = () => {
     setUserInformation(null);
-    setDropdownOpen(false); // Close dropdown when logging out
+    setDropdownOpen(false);
   };
 
   const onProfile = () => {
@@ -122,7 +122,6 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
   // Handle dialog close with additional cleanup
   const handleGenericDialogClose = (open: boolean) => {
     if (!open) {
-      // Force focus return and cleanup
       setTimeout(() => {
         document.body.style.pointerEvents = '';
         const activeElement = document.activeElement as HTMLElement;

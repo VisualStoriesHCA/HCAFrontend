@@ -5,4 +5,5 @@
 export enum StoryState {
     PENDING = 'pending',
     COMPLETED = 'completed',
+    ERROR = 'error',
 }

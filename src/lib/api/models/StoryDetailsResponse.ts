@@ -13,5 +13,6 @@ export type StoryDetailsResponse = {
     storyImages: Array<ImageResponse>;
     audioUrl?: (string | null);
     settings: StorySettings;
+    suggestions?: (Array<string> | null);
 };
 

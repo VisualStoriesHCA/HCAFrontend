@@ -27,7 +27,6 @@ interface LoadingStates {
     pollingError: boolean;
 }
 
-// Story suggestions data
 const STORY_SUGGESTIONS = [
     "A curious cat discovers a magical doorway that leads to a world made entirely of yarn.",
     "On a rainy afternoon, Emma finds an old umbrella that can fly anywhere she imagines.",
@@ -43,7 +42,7 @@ export default function StoryOverview({
 }) {
     const { userInformation } = useUserContext();
     const { settings: availableSettings, loading: settingsLoading } = useSettingsContext();
-    
+
     const [story, setStory] = useState<StoryDetailsResponse | null>(null);
     const [loadingStates, setLoadingStates] = useState<LoadingStates>({
         initialLoading: true,
@@ -184,7 +183,7 @@ export default function StoryOverview({
                 if (data.settings?.regenerateImage !== undefined) {
                     setRegenerateImage(data.settings.regenerateImage);
                 }
-                
+
                 if (!isPollingCall) {
                     updateLoadingState('initialLoading', false);
                     clearCanvasDrawings();
@@ -238,7 +237,6 @@ export default function StoryOverview({
             setDrawingMode({ mode: "none", color: "" });
             stopPolling();
             setStory(null);
-            // Reset to default values
             setImageModel(1);
             setDrawingStyle(2);
             setColorBlindMode(1);
@@ -249,7 +247,7 @@ export default function StoryOverview({
         // Set loading immediately to prevent flash
         updateLoadingState('initialLoading', true);
         resetAllLoadingStates();
-        updateLoadingState('initialLoading', true); // Ensure it stays true after reset
+        updateLoadingState('initialLoading', true); 
         setDrawingMode({ mode: "none", color: "" });
         stopPolling();
         setStory(null);
@@ -330,7 +328,7 @@ export default function StoryOverview({
         });
     };
 
-    // NEW: Separate handler for generating story from image
+    // Separate handler for generating story from image
     const handleGenerateStoryFromImage = () => {
         if (imageCanvasRef.current?.onGenerateStory) {
             imageCanvasRef.current.onGenerateStory();
@@ -471,7 +469,6 @@ export default function StoryOverview({
 
         return (
             <div className="absolute bottom-4 left-4 right-4 z-10">
-                {/* Tooltip positioned above the entire suggestions container */}
                 {showTooltip && (
                     <div className="absolute bottom-full left-0 right-0 mb-2 z-50">
                         <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
@@ -493,7 +490,7 @@ export default function StoryOverview({
                         />
                     </div>
                     <div className="space-y-2">
-                        {STORY_SUGGESTIONS.map((suggestion, index) => (
+                        {story?.suggestions?.map((suggestion, index) => (
                             <button
                                 key={index}
                                 onClick={() => handleSuggestionClick(suggestion)}
@@ -508,7 +505,7 @@ export default function StoryOverview({
         );
     };
 
-    // Placeholder component (unchanged)
+    // Placeholder component
     const PlaceholderContent = () => (
         <div className="flex flex-1 overflow-hidden">
             <Card className="w-1/2 border-r rounded-none">
@@ -628,7 +625,7 @@ export default function StoryOverview({
                     className="flex-1"
                 />
                 
-                {/* Story Suggestions - positioned at the bottom of the text editor */}
+                {/* Story Suggestions */}
                 <StorySuggestions />
             </div>
 
@@ -637,7 +634,7 @@ export default function StoryOverview({
                 <div className="p-4 border-b flex items-center justify-between">
                     <h2 className="font-semibold">Image Canvas</h2>
                     <div className="flex gap-2">
-                        {/* NEW: Separate Story Generation Button */}
+                        {/* Separate Story Generation Button */}
                         <Button
                             onClick={handleGenerateStoryFromImage}
                             disabled={isAnyOperationInProgress}
@@ -658,7 +655,6 @@ export default function StoryOverview({
                             <Upload className="h-3 w-3" />
                             {loadingStates.uploadingSketch ? "Uploading..." : ""}
                         </Button>
-                        {/* NEW: Separate Settings Button */}
                         <StorySettingsButton
                             disabled={isAnyOperationInProgress}
                             imageModel={imageModel}
@@ -699,7 +695,7 @@ export default function StoryOverview({
                 />
             </div>
 
-            {/* Error notification (unchanged) */}
+            {/* Error notification */}
             {loadingStates.pollingError && story && (
                 <Card className="fixed bottom-4 right-4 w-[360px] shadow-lg border-red-200 bg-red-50 z-50">
                     <CardHeader className="pb-2">

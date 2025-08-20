@@ -7,17 +7,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ItemsService, UserAchievement } from "@/lib/api";
 
-// Achievement type definitions based on your backend schema
-interface AchievementReward {
-  points?: number;
-  badge?: string;
-  unlocks?: string[];
-}
-
-
-interface UserAchievementsResponse {
-  achievements: UserAchievement[];
-}
 
 interface AchievementsProps {
   userId?: string;
@@ -42,11 +31,6 @@ const Achievements = ({ userId }: AchievementsProps) => {
     setError(null);
     
     try {
-      // TODO: Replace with actual API call to /getUserAchievements
-      // Example: const response = await ItemsService.getUserAchievements({ userId });
-      // setAchievements(response.achievements);
-      
-      // Mock data for now - replace this with actual API call
       const mockAchievements = (await ItemsService.getUserAchievements(userId)).achievements;
 
       setAchievements(mockAchievements);
@@ -87,11 +71,6 @@ const Achievements = ({ userId }: AchievementsProps) => {
   const getProgressPercentage = (achievement: UserAchievement) => {
     if (achievement.state === "completed") return 100;
     return Math.min((achievement.currentValue / achievement.targetValue) * 100, 100);
-  };
-
-  const getCategories = () => {
-    const categories = Array.from(new Set(achievements.map(a => a.category)));
-    return ["all", ...categories];
   };
 
   const filteredAchievements = activeTab === "all" 
