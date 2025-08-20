@@ -11,7 +11,7 @@ import { UserResponse, ItemsService, AvailableSettingsResponse } from "./lib/api
 
 // Base URL
 import { OpenAPI } from './lib/api';
-OpenAPI.BASE = 'http://localhost:8080';
+OpenAPI.BASE = '/api';
 
 // UserContext Types
 type UserContextType = {
