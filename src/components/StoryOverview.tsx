@@ -376,7 +376,7 @@ export default function StoryOverview({
                 }
             });
 
-        } catch (error) {
+        } catch (error) { 
             if (error instanceof Error) {
                 toast.error(error.message);
             }
