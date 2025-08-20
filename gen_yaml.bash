@@ -1,1 +1,1 @@
-curl http://localhost:8080/openapi.json | yq eval -P > api-spec.yaml
+curl /api:8080/openapi.json | yq eval -P > api-spec.yaml
