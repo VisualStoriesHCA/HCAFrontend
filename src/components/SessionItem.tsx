@@ -29,7 +29,7 @@ const SessionItem = ({ story, isActive, onClick, onDelete }: SessionItemProps) =
   const cardRef = useRef<HTMLDivElement>(null);
 
   const handleDeleteClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent triggering the onClick for the card
+    e.stopPropagation(); 
     e.preventDefault();
     setAlertDialogOpen(true);
   };
@@ -41,7 +41,6 @@ const SessionItem = ({ story, isActive, onClick, onDelete }: SessionItemProps) =
   };
 
   const handleCardClick = (e: React.MouseEvent) => {
-    // Prevent clicks during deletion process OR when alert dialog is open
     if (isDeleting || alertDialogOpen) {
       e.preventDefault();
       e.stopPropagation();

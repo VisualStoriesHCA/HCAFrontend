@@ -18,7 +18,6 @@ const ColorPicker = ({
   onModeChange, 
   disabled = false 
 }: ColorPickerProps) => {
-  // Initial preset colors
   const initialColors = [
     "#000000", // Black
     "#FF0000", // Red
@@ -36,8 +35,8 @@ const ColorPicker = ({
   const [hexInput, setHexInput] = useState(currentColor);
   const [brightness, setBrightness] = useState(1);
   const [baseHsv, setBaseHsv] = useState({ h: 0, s: 1, v: 1 });
-  const [activeSlot, setActiveSlot] = useState<number | null>(null); // Track which slot is active
-  const [slotColors, setSlotColors] = useState<string[]>(initialColors); // Configurable slot colors
+  const [activeSlot, setActiveSlot] = useState<number | null>(null); 
+  const [slotColors, setSlotColors] = useState<string[]>(initialColors); 
   const colorWheelRef = useRef<HTMLCanvasElement>(null);
   const isInternalUpdate = useRef(false);
   const [colorWheelSize] = useState(150);
@@ -117,8 +116,7 @@ const ColorPicker = ({
       const hsv = hexToHsv(currentColor);
       setBaseHsv(hsv);
       setBrightness(hsv.v);
-      
-      // Reset active slot when color changes externally (e.g., story switch)
+    
       // Only reset if the new color doesn't match the currently active slot
       if (activeSlot !== null && slotColors[activeSlot] !== currentColor) {
         console.log('External color change detected, resetting active slot');

@@ -3,7 +3,6 @@ interface LoadingSpinnerProps {
   className?: string;
 }
 
-// Text Loading Spinner - Animated text lines writing themselves
 const TextLoadingSpinner = ({ size = "md", className = "" }: LoadingSpinnerProps) => {
   const sizePx = size === "sm" ? 80 : size === "lg" ? 120 : 100;
   
@@ -88,7 +87,6 @@ const TextLoadingSpinner = ({ size = "md", className = "" }: LoadingSpinnerProps
   );
 };
 
-// Image Loading Spinner - Morphing geometric shapes with color transitions
 const ImageLoadingSpinner = ({ size = "md", className = "" }: LoadingSpinnerProps) => {
   const sizePx = size === "sm" ? 80 : size === "lg" ? 120 : 100;
   

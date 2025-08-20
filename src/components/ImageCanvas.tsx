@@ -25,7 +25,7 @@ interface CanvasState {
   history: ImageData[];
   historyIndex: number;
   zoom: number;
-  baseZoom: number; // The zoom level that fits the image to screen
+  baseZoom: number; 
   panOffset: { x: number; y: number };
   imageError: string | null;
   containerSize: { width: number; height: number };
@@ -475,7 +475,7 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
     drawingMode
   );
 
-  // Monitor container size changes - but only for initial setup
+  // Monitor container size changes
   useEffect(() => {
     const updateContainerSize = () => {
       if (containerRef.current) {
@@ -492,7 +492,7 @@ const ImageCanvas = forwardRef<any, ImageCanvasProps>(({
 
     // Only run once on mount
     updateContainerSize();
-  }, []); // Empty dependency array - only run once
+  }, []);
 
   // Initialize canvas when image URL changes
   useEffect(() => {

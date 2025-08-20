@@ -36,11 +36,10 @@ const TextEditor = ({
   // Only update innerHTML if content prop changed externally
   useEffect(() => {
     const sanitized = DOMPurify.sanitize(content, { ALLOWED_TAGS });
-    // Avoid unnecessary innerHTML update if content is unchanged
     if (editorRef.current && sanitized !== lastContentRef.current) {
       editorRef.current.innerHTML = sanitized;
       lastContentRef.current = sanitized;
-      setUserHasEdited(false); // Reset editing state when new content arrives
+      setUserHasEdited(false); 
     }
   }, [content]);
 
@@ -109,7 +108,7 @@ const TextEditor = ({
         
         setUserHasEdited(true);
         
-        // Save cursor position based on text content (ignoring HTML tags)
+        // Save cursor position based on text content 
         const selection = window.getSelection();
         let textOffset = 0;
         
@@ -129,7 +128,6 @@ const TextEditor = ({
           lastContentRef.current = sanitized;
           onContentChange(sanitized);
           
-          // Use requestAnimationFrame to ensure DOM is updated before setting cursor
           requestAnimationFrame(() => {
             if (editorRef.current) {
               setTextOffset(editorRef.current, textOffset);
@@ -142,7 +140,6 @@ const TextEditor = ({
 
   const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
     const dirty = e.currentTarget.innerHTML;
-    // Always sanitize without mark tags once user has started editing
     const clean = DOMPurify.sanitize(dirty, { 
       ALLOWED_TAGS: userHasEdited ? ALLOWED_TAGS_NO_MARK : ALLOWED_TAGS 
     });
@@ -171,7 +168,7 @@ const TextEditor = ({
         suppressContentEditableWarning={true}
       />
       
-      {/* Audio Player - only show if audioUrl exists */}
+      {/* Audio Player */}
       {audioUrl && (
         <div className="sticky bottom-0 bg-white border-t shadow-lg z-30">
           <div className="p-3 bg-gray-50">
