@@ -8,12 +8,14 @@ Frontend for the most amazing HCA Project to date.
 - **Styling**: TailwindCSS with Radix UI components
 - **Package Manager**: Bun (recommended) / npm
 - **API Client**: OpenAPI generated client
+- **Deployment**: Docker with nginx
 
 ## Prerequisites
 
 - **Node.js** 18+ 
 - **Bun** (recommended) or npm
 - **Chrome** browser (recommended)
+- **Docker** (for deployment)
 
 ### Installing Bun
 
@@ -52,6 +54,41 @@ npm run dev
 ```
 
 The application will be available at `http://localhost:3000`
+
+## Docker Deployment
+
+### Building for Production
+
+**Build Docker image:**
+```bash
+docker build -t hca-frontend .
+```
+
+**Run container:**
+```bash
+docker run -p 3000:80 hca-frontend
+```
+
+The production application will be available at `http://localhost:3000`
+
+### Docker Configuration
+
+The application uses a multi-stage Docker build:
+1. **Build stage**: Uses Bun to install dependencies and build the application
+2. **Production stage**: Uses nginx to serve static files with SPA routing support
+
+### Files Required for Docker
+
+- `Dockerfile` - Multi-stage build configuration
+- `nginx.conf` - Custom nginx configuration for SPA routing
+- `.dockerignore` - Excludes unnecessary files from Docker context
+
+### Production Considerations
+
+- The nginx configuration includes gzip compression and security headers
+- Static assets are cached for optimal performance
+- SPA routing is handled by serving `index.html` for all routes
+- Container runs on port 80 internally, mapped to your chosen external port
 
 ## API Integration
 
